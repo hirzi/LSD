@@ -1,4 +1,4 @@
-# LSD
+# Identifying Loci under Selection via explicit Demographic models (LSD)
 
   This repository contains a suite of scripts for performing LSD genome scans based on explicit demographic models (Luqman et al., in preparation). The current implementation estimates demographic parameters via an Approximate Bayesian Computation (ABC) framework, and hence relies on simulations to estimate the posterior distribution of model parameters. The current implementation takes ms-format coalescent samples as input for simulated data and mpileup format (e.g. from BAM files) as input for observed data. A large range of modern coalescent simulators (or those that approximate the coalescent) output ms-format data including e.g. ms (Hudson, 2002), msHOT (Hellenthal & Stephens, 2007), msms (Ewing & Hermisson, 2010), msprime (Kelleher & Etheridge, 2015), MaCS (Chen, Marjoram, & Wall, 2009), cosi2 (Shlyakhter et al., 2014) and SCRM (Staab et al., 2015). ABC is implemented via ABCtoolbox (Wegmann et al., 2010).
 
