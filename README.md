@@ -6,4 +6,4 @@
 
   LSD-blotter takes the output of the ABC parameter estimates and estimates the departure of the inferred posteriors from neutral-expectations (which are calculated prior from a putative neutral set of markers). This is performed in a sliding window across the genome. If conditioning the detection of selected (and linked) loci on multiple (joint) parameters, LSD also outputs the directionality of the deviation in the joint posterior with respect to the marginal parameters, and represents these as colours in the genome scan Manhattan plot.
 
-This page is currently a work in progress and will be continuously updated, e.g. with further instructions, in the coming weeks (July 2020).
+This page is currently a work in progress and will be continuously updated, e.g. with scripts and further instructions, in the coming weeks (July 2020).
