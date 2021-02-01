@@ -58,7 +58,7 @@ We first generate coalescent samples under a defined demographic model. Being re
 	
    where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. Elaborate…
 
-Steps a) and b), that is the generation of simulated summary statisticss, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Provide example.
+Steps a) and b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Provide example.
 
 #  ii) Calculating observed summary statistics
 To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
