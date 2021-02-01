@@ -10,8 +10,6 @@
   ABC is currently implemented via ABCtoolbox (Wegmann et al., 2010). LSD-blotter takes the output of the ABC parameter estimates and estimates the departure of the inferred posteriors from neutral expectations. If conditioning the detection of selected (and linked) loci on multiple (joint) parameters, LSD also outputs the directionality of the deviation in the joint posterior with respect to the marginal parameters, and represents these as colours in the genome scan Manhattan plot.
 
   We note that LSD is NOT a program, rather it is an analytical framework for identifying loci under selection via deviations in demographic parameters. As such, it is not constrained to any particular program. Rather, we envision a custom and modular implementation that may interface with any appropriate combination of coalescent simulator, summary statistics calculator and ABC program. Here, we simply propose an example implementation utilising msms, LSD-High/Low and ABCtoolbox. As currently implemented, LSD takes whole genome sequence (WGS) data and conditions the inference of selection on genomic windows (regions), rather than SNPs.
-  
-<img src="https://github.com/hirzi/LSD/blob/master/ABC_demography_pipeline_general_landscape3.png" width="800">  
 
 ============================================
 
@@ -253,7 +251,7 @@ Observed and simulated summary statistics can then be transformed into PLS compo
 #  iv) Validation of simulations
 Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. 
 
-<img src="https://github.com/hirzi/LSD/blob/master/Sims_vs_Obs_examplePlot.png" width="600">
+<img src="https://github.com/hirzi/LSD/blob/master/Sims_vs_Obs_examplePlot.png" width="500">
 
 To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap (script). 
 
@@ -368,7 +366,7 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 #  vi) Estimating neutral demographic parameters
   In LSD, steps ii)-v) above are first carried out assuming the observed data to constitute neutral (or genome-wide) regions. Assuming such, step v) generates the parameter posterior distributions for numerous putative neutral windows. 
 
-<img src="https://github.com/hirzi/LSD/blob/master/Combine_posteriors_github.png" width="600">
+<img src="https://github.com/hirzi/LSD/blob/master/Combine_posteriors_github.png" width="700">
 
 To acquire an estimate of the neutral (global) posteriors, we run x.script.
 
