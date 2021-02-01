@@ -61,7 +61,52 @@ If parameters are not known with confidence, as will usually be the case in empi
 	
 	python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
 	
-   where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. Elaborate…
+   where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. 
+
+To acquire this fitted distribution, we first need to acquire the empirical coverage distribution. Per-site coverage of empirical data can be acquired e.g. via samtools
+
+	samtools depth bam.file > bam.depthPerSite
+
+We can then explore which theoretical distribution best captures this observed coverage distribution. 
+
+	# Load these libraries
+	library(fitdistrplus)
+	library(logspline)
+	library(MASS)
+
+	# Read in data
+	raw_data <- read.table(“bam.depthPerSite”, header = FALSE, sep = "\t", row.names = NULL)
+
+	# For testing, you may want to subsample data (since there can be millions of rows)
+	raw_data <- raw_data[sample(nrow(raw_data), 100000), ]
+
+	# Column 3 lists the coverages for the population.
+	pop_data <- raw_data$V3
+
+	# Consider if you want to apply a max depth filter (e.g. for better visualisation)
+	max_depth <- 500
+	pop_data_filtered <- pop_data[pop_data <= max_depth]
+
+	# Evaluate and plot which theoretical distribution best fits data
+	# Full data
+	descdist(pop_data, discrete = TRUE, boot = 100)
+	# Filtered data
+	descdist(pop_data_filtered, discrete = TRUE, boot = 100)
+
+	# Fit the distribution to the data and plot
+	# Full data
+	pop_data_nbinom <- fitdist(pop_data, "nbinom")
+	plot(pop_data_nbinom)
+	# Filtered data
+	pop_data_filtered_nbinom <- fitdist(pop_data_filtered, "nbinom")
+	plot(pop_data_filtered_nbinom)
+
+	# Output the summary
+	summary(pop_data_nbinom)
+	summary(pop_data_filtered_nbinom)
+	# This summary contains the moments of the distribution (e.g. mean and s.d. for normal distributions; mean and size (dispersal for negative binomial distributions). 
+
+We specify the moments of the fitted distribution to a file with columns representing individuals or pooled populations, the first row representing the mean of the distribution and the second row the s.d. or dispersal. Note that sequencing data is typically best fit by a negative binomial distribution.
 
 c) Efficiently generating simulations with ABCtoolbox
 
@@ -183,10 +228,21 @@ For the genome scan (2nd step), we supply a list of genome or chromosome-wide se
 
 	python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 --windowStep 1000 –pooled
 
-In these commands, we have applied the same filtering regime as well as mimicked the observed error rate as well as coverage distribution.
+In these commands, we have applied the same filtering regime as in the simulated data.
 
 #  iii) Remove correlation between summary statistics
-  To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation (Wegmann, Leuenberger, & Excoffier, 2009). We can calculate PLS coefficients via find_pls.r. Observed and simulated summary statistics can then be transformed into PLS components via the ABCTransform scripts.
+To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. Be sure to modify the following g lines in this script depending on the format of your summary statistics file.
+
+	# Define working directory
+	directory<-"/cluster/work/gdc/people/lhirzi/ABC_Simulations/"
+	# Define number of PLS components
+	numComp<-15
+	# Define the starting column for the summary statistics
+	firstStat<-13
+	# Define the columns for the free (i.e. non-fixed) parameters
+	p<-c(3,4,7)
+
+Observed and simulated summary statistics can then be transformed into PLS components via the ABCTransform scripts.
   
 #  iv) Validation of simulations
   Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap (script). 
