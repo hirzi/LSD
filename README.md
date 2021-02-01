@@ -1,6 +1,6 @@
 # Identifying Loci under Selection via explicit Demographic models (LSD)
 
-![alt text](https://github.com/hirzi/LSD/blob/master/Single_examplePlot.png  | width=200)
+<img src="https://github.com/hirzi/LSD/blob/master/Single_examplePlot.png" width="100">
 
   This repository contains a suite of scripts for performing LSD genome scans based on explicit demographic models (Luqman et al. 2021, https://www.biorxiv.org/content/10.1101/2020.07.20.211581v2.full.pdf). The current implementation estimates demographic parameters via an Approximate Bayesian Computation (ABC) framework, and works in two steps. First, neutral demographic parameters are estimated (see requirements for LSD point (ii)). Second, per-locus parameter estimates (e.g. for a sliding window across the chromosome) are compared to the neutral estimates, to identify selected loci. 
 
