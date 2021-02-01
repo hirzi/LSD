@@ -39,24 +39,24 @@ We first generate coalescent samples under a defined demographic model. Being re
 #  i) Generate simulated data
    a) Generating coalescent simulations
    
-	# We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let’s assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 individuals each. The msms command line to generate coalescent samples for this demographic model would be e.g.:  
+   We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let’s assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 individuals each. The msms command line to generate coalescent samples for this demographic model would be e.g.:  
 	
 	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M -m 2 1 M
 	
-	# where M is the migration rate (demographic parameter) that we condition the detection of selection on, and should be drawn from a reasonably large prior range.
+   where M is the migration rate (demographic parameter) that we condition the detection of selection on, and should be drawn from a reasonably large prior range.
    Here, we simulate a single locus, and hence assume no recombination between loci and fixed recombination within locus.
 
    b) Calculating simulated summary statistics
    
-	# To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
+   To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
 	
 	python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -f ABC
 
-	# Or if we want to simulate errors (at a certain error rate), filtering, pooled samples, and a specific coverage distrubtion, we can do e.g.:
+   Or if we want to simulate errors (at a certain error rate), filtering, pooled samples, and a specific coverage distrubtion, we can do e.g.:
 	
 	python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
 	
-	# where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. Elaborate…
+   where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. Elaborate…
 
 Steps a) and b), that is the generation of simulated summary statisticss, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Provide example.
 
