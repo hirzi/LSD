@@ -65,7 +65,7 @@ If parameters are not known with confidence, as will usually be the case in empi
 
 Steps a) and b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox allows the convenient ability to draw variables (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
 
-c) Performing Simulations with ABCtoolbox
+c) Efficiently generating simulations with ABCtoolbox
 
 Example input file:
 
