@@ -361,6 +361,72 @@ Before advancing to parameter estimation, we should first make sure that our sim
 #  vi) Estimating neutral demographic parameters
   In LSD, steps ii)-v) above are first carried out assuming the observed data to constitute neutral (or genome-wide) regions. Assuming such, step v) generates the parameter posterior distributions for numerous putative neutral windows. To acquire an estimate of the neutral (global) posteriors, we run x.script.
 
+	# Import libraries
+	library(MASS)
+	library(RColorBrewer)
+
+	# Define input variables
+	nparams <- 2 # number of parameters
+
+	# Directory and prefix
+	master_dir <- "/Users/luqman/Desktop/ABC Simulation Study/Robustness Analyses/"
+	results_dir <- "Estimation_results_2pop_simpleModel_poolSim_t10_neutral_FIXED_without0segsiteloci_PLS15_m5m5_St1_SiPop1_0.1_SiPop2_0.1_SPop1_200_SPop2_200_Chr_withSFC_jointGrid33"
+	prefix <- "ABC_estimation_2pop_simpleModelmodel0_MarginalPosteriorDensities_Obs"
+	setwd(paste0(master_dir,results_dir))
+
+	####### Plot combined posteriors and all observations (loop over fraction of loci under selection and over models #######
+
+	# Define total number of loci and fraction of loci which are under selection and neutrality. 
+	total_num_loci <- 1000
+
+	# Find product of probability densities (take log and sum)
+	prod <- matrix(0, ncol=nparams, nrow=100)
+	for (i in 0:(total_num_loci-1)) { # recall that ABCEstimator results are 0-indexed so no of loci - 1
+	  ABC_GLM<-read.delim(paste(prefix, i, ".txt", sep = "")) 
+	  for(p in 1:nparams){
+	    prod[,p] <- prod[,p] + log(ABC_GLM[,2*p+1]);
+	  }
+	}
+
+	# Normalise product of probability densities
+	for(p in 1:nparams){
+	  # Normalise and plot product of densities
+	  prod[,p] <- prod[,p] - max(prod[,p]);
+	  prod[,p] <- exp(prod[,p])
+
+	}
+
+	# Get values at peaks of product of probability densities (values)
+	combined_estimate_num <- vector()
+	for(p in 1:nparams){
+	  comb_estimate_param_num <- (ABC_GLM[,2*p][match(max(exp(prod[,p])),exp(prod[,p]))])
+	  combined_estimate_num[[p]] <- comb_estimate_param_num
+	}
+
+	# Get names and values at peaks of product of probability densities (names and values)
+	combined_estimate <- list()
+	for(p in 1:nparams){
+	  comb_estimate_param <- (paste(colnames(ABC_GLM)[2*p], round(ABC_GLM[,2*p][match(max(exp(prod[,p])),exp(prod[,p]))],3), sep = ": "))
+	  combined_estimate[[p]] <- comb_estimate_param
+	}
+
+	# Plot
+	par(mfrow=c(1,2))
+	for(p in 1:nparams){
+	  # Normalise and plot product of densities
+	  plot(ABC_GLM[,2*p], prod[,p], type='l', lty=2, col='darkred', main=names(ABC_GLM[2*p]), ylim = c(0,(max(ABC_GLM[[2*p + 1]])*2)), lwd = 2, xlab = combined_estimate[[p]]);
+	  # Plot all windows
+	  for (i in 0:(total_num_loci-1)) {
+	    ABC_GLM<-read.delim(paste(prefix, i, ".txt", sep = ""))
+	    #normalised_density <- ABC_GLM[[2*p + 1]] / max(ABC_GLM[[2*p + 1]]) # if you want to normalise the height for plotting
+	    lines(ABC_GLM[[2*p]],ABC_GLM[[2*p + 1]],type='l',col='dodgerblue', lwd = 0.1)
+	    #lines(ABC_GLM[[2*p]],normalised_density,type='l',col='dodgerblue', lwd = 0.1)
+	  }
+	}
+
+	# Print result
+	print(combined_estimate)
+
 #  vii) Calculating deviation from neutral expectations
   Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This assumes that step ii) has been performed where the observed data constitutes the full while genome or chromosome data. This can be run via the xxx scripts (this needs to be revised such that departure is from the diagonal defined by the neutral point). 
 
