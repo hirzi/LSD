@@ -33,6 +33,8 @@ msms follows ms syntax. The authors of the program have written a convenient acc
  
 ABCtoolbox is available for download at: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Home
 
+LSD accessory scripts are coded in Python 3 or R, and thus require that these programs are installed.
+
 ===================================================================
 
 # Instructions
@@ -58,11 +60,11 @@ If parameters are not known with confidence, as will usually be the case in empi
    	
    To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
 	
-	python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -f ABC
+	python lsd_hi.py msms_output -d 40 -d 40 -l 5000 -f ABC
 
    Or if we want to simulate errors (at a certain error rate), filtering, pooled samples, and a specific coverage distrubtion, we can do e.g.:
 	
-	python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
+	python lsd_hi.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
 	
    where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. 
 
@@ -110,6 +112,10 @@ We can then explore which theoretical distribution best captures this observed c
 	# This summary contains the moments of the distribution (e.g. mean and s.d. for normal distributions; mean and size (dispersal for negative binomial distributions). 
 
 We specify the moments of the fitted distribution to a file with columns representing individuals or pooled populations, the first row representing the mean of the distribution and the second row the s.d. or dispersal. Note that sequencing data is typically best fit by a negative binomial distribution.
+
+For more information on the available options for LSD-High, you can run:
+
+	python lsd_hi.py -h
 
 c) Efficiently generating simulations with ABCtoolbox
 
@@ -232,6 +238,10 @@ For the genome scan (2nd step), we supply a list of genome or chromosome-wide se
 	python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 --windowStep 1000 –pooled
 
 In these commands, we have applied the same filtering regime as in the simulated data.
+
+For more information on the available options for LSD-High, you can run:
+
+	python lsd_high_sumstats_calculator_OBS.py -h
 
 #  iii) Remove correlation between summary statistics
 To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, a strategy is two run this in two steps: 1) run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 2) Re-run find_pls.r with the optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
