@@ -66,9 +66,10 @@ If parameters are not known with confidence, as will usually be the case in empi
 Steps a) and b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox allows the convenient ability to draw variables (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
 
 c) Performing Simulations with ABCtoolbox
+
 Example input file:
 
-	//	Example ABCtoolbox input file
+	//	ABCtoolbox input file
 	//	*********************
 
 	// To set up ABCtoolbox to perform simulations
@@ -79,13 +80,13 @@ Example input file:
 	// samplerType	MCMC
 
 	// Define .est file, which defines the priors
-	estName	11.ABCPriors_simpleModel_4params.est
+	estName	example_ABCsampler.est
 
 	// Define the file which contains the observed sumstats. This must be in the same form as the simulated sumstats output
 	obsName	/path/example.obs
 
 	//	Output file name
-	outName	Amajus_simpleModel_4params
+	outName	2pop_simpleModel_4params
 
 	//	Number of simulations to perform
 	numSims	5000
@@ -95,7 +96,7 @@ Example input file:
 
 	//	This is the msms command line we use
 	//	We replace parameter (argument) values with tags defined in .est file, and define under simArgs (removing "msms")
-	simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 m_12 -m 2 1 m_21
+	simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
 
 	//	This redirects the standard output to a file
 	simOutputRedirection SIMDATANAME
@@ -119,6 +120,7 @@ Example input file:
 	//numCaliSims 100
 	//thresholdProp 0.1
 	//rangeProp 1
+
 
 Example priors file:
 
