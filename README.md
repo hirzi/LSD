@@ -63,10 +63,12 @@ Steps a) and b), that is the generation of simulated summary statisticss, can be
 #  ii) Calculating observed summary statistics
 To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
 For the neutral regions (1st step), this list of files will comprise of neutral or genome wide regions e.g.:
-python lsd_high_sumstats_calculator_OBS.py extractedNeutralRegions_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 –pooled
+
+	python lsd_high_sumstats_calculator_OBS.py extractedNeutralRegions_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 –pooled
 
 For the genome scan (2nd step), we supply a list of genome or chromosome-wide sequences, and may add an additional argument (--windowStep 1000) should we wish to modulate the step-size of the sliding window e.g.:
-python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 --windowStep 1000 –pooled
+
+	python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 --windowStep 1000 –pooled
 
 In these commands, we have applied the same filtering regime as well as mimicked the observed error rate as well as coverage distribution.
 
