@@ -231,13 +231,13 @@ For the genome scan (2nd step), we supply a list of genome or chromosome-wide se
 In these commands, we have applied the same filtering regime as in the simulated data.
 
 #  iii) Remove correlation between summary statistics
-To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. Be sure to modify the following g lines in this script depending on the format of your summary statistics file.
+To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, a strategy is two run this in two steps: 1) run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 2) Re-run find_pls.r with the optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
 
 	# Define working directory
 	directory<-"/cluster/work/gdc/people/lhirzi/ABC_Simulations/"
 	
 	# Define number of PLS components
-	numComp<-15
+	numComp<-6
 	
 	# Define the starting column for the summary statistics
 	firstStat<-13
@@ -248,10 +248,115 @@ To account for potential correlation between summary statistics and to retain on
 Observed and simulated summary statistics can then be transformed into PLS components via the ABCTransform scripts.
   
 #  iv) Validation of simulations
-  Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap (script). 
+Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap (script). 
+
+	# Import libraries
+	library(ggplot2)
+	library(gridExtra)
+
+	# Import data
+	ABC_rej <- read.delim("./PLS_transformed_simulatedSumStats.txt.txt")
+	ABC_obs<-read.delim("./PLS_transformed_observedSumStats.txt")
+
+	# Select column with PLS LinearCombination_n
+	ABC_rej<-ABC_rej[c(1:5000),c(12:ncol(ABC_rej))]
+	ABC_obs<-ABC_obs[,c(2:ncol(ABC_obs))]
+
+	# Number of PLS components (to plot!)
+	num_PLS <- 6
+
+	# For storing ggplot objects in a list using a loop: https://stackoverflow.com/questions/31993704/storing-ggplot-objects-in-a-list-from-within-loop-in-r
+	plot_list <- list()
+	for (i in seq(1, (num_PLS/2))) {
+	  local({
+	    i <- i
+	    plot_list[[i]] <<- ggplot(data = ABC_rej, aes(x=ABC_rej[,2*i-1], y=ABC_rej[,2*i]) ) +
+	      geom_hex(bins = 35) + scale_fill_gradientn(colours=c("gray85","gray15"),name = "sim count",na.value=NA) +
+	      geom_hex(data = ABC_obs, bins = 70, aes(x=ABC_obs[,2*i-1], y=ABC_obs[,2*i], alpha=..count..), fill="red") +
+	      theme_bw() + xlab(paste0("PLS ",2*i-2)) + ylab(paste0("PLS ",2*i-1)) + labs("asd")
+	  })
+	}
+
+	grid.arrange(grobs = plot_list, ncol=3, top = "Overlap of simulated & observed PLS-transformed summary statistics")
+
 
 #  v) ABC parameter estimation
   Perform demographic parameter estimation via ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/estimation/parameter_estimation. In our example, we seek to obtain the joint posterior of reciprocal migration rates between the 2 populations. The ABCtoolbox parameter files should reflect this accordingly.
+
+	//----------------------------------------------------------------------
+	//ABCtoolbox input file for parameter estimation
+	//----------------------------------------------------------------------
+
+	//	To estimate parameters
+	task estimate
+
+	//	Define estimation method
+	//	Recall that when setting independentReplicates, the obs file should contain multiple entries (one per line), where each entry is the sumstats calculated from one (neutral) region. The algorithm then consider each region as an independent replicate, on which it subsequently calculates the posteriors.
+	//estimationType standard
+	//estimationType independentReplicates
+
+	//	Observed data
+	obsName	/path/example_PLS5.obs
+
+	//	Simulated data
+	simName /path/PLS_transformed_simulatedSumStats.txt
+
+	//	Specifies the columns containing the parameters of interest in the file containing the summary statistics of the simulated data, i.e. its assigned values are numbers indicating the position of the respective columns in the file.
+	params 2-3
+
+	//	Specify the output file prefix
+	outputPrefix ABC_estimation_2pop_simpleModel_
+
+	//	Rejection settings
+
+	//	Specifies the number of simulations in the file containing the summary statistics of the simulated data to be taken into account.
+	maxReadSims 10000000
+
+	//	Specifies the number of simulations closest to the observed data to be selected from the simulations.
+	numRetained 2500
+
+	//	Calculates the tukey depth P-value. This calculates the Tukey depth (the minimum number of sample points on one side of a hyperplane through the point, i.e. a measure of how centered a point is in an overall cloud of points) of the observed data and contrasts it with the Tukey depth of the distribution of all retained simulation points (hence argument should be equal or less than numRetained), to produce a p-value. If the observed point is close to the center of the retained simulations, we expect that most 
+	//tukeyPValue 500
+
+	//	Calculates the marginal density P-value. Similar in approach to the above, this tag calculates the P-value for the marginal density of the observed datapoint by doing so for the observed datapoint and the retained simulations (distribution)
+	//marDensPValue 500
+
+	//	If the parameter writeRetained is defined and set to 1, ABCestimator writes two files: one containing the parameter and statistics of the retained simulations and one with the smoothed parameter distribution of the retained simula- tions (see
+	writeRetained 1
+
+	//	To remove highly correlated statistics
+	pruneCorrelatedStats
+
+	//	Specifies whether (1) or not (0) the statistics are standardized before the distance is calculated.
+	standardizeStats 1
+
+	//	Posterior estimation settings
+	//	Since ABCestimator standardizes the parameters internally to the range [0, 1] diracPeakWidth, the same diracPeakWidth value is used for all parameters. Too small values of diracPeakWidth will result in wiggly posterior curves, too large values might unduly smear out the curves. The best advice is to run the calculations with several choices for diracPeakWidth. The choice of diracPeakWidth depends on the number of retained simulations: the larger the number of retained parameter values, the sharper the smaller diracPeakWidth can be chosen in order to still get a rather smooth result. If the parameter diracPeakWidth is not defined, ABCestimator uses as value of 0.001, unless the parameter numRetained is defined. In this case ABCestimator sets σk = 1/N, where N is the number of simulations to retain, as proposed by Leuenberger and Wegmann (2009).
+	//diracPeakWidth 0.02
+
+	//	ABCestimator calculates the density of the marginal posteriors on a number of equally spaced points along the range of every parameter. The number of such points is specified with the parameter posteriorDensityPoints with default value 100.
+	posteriorDensityPoints 100
+
+	//	Should you wish to estimate joint posteriors
+	jointPosteriors log_M_12,log_M_21
+	// While we don't need the output of jointPosteriorDensityPoints since we're outputting the jointSamplesMCMC, this nonetheless needs to be set to a minimum of 2!
+	jointPosteriorDensityPoints 33
+
+	// For reference see: https://bitbucket.org/wegmannlab/abctoolbox/src/master/
+	//jointSamplesMCMC 10000
+	//sampleMCMCStart jointmode
+	//sampleMCMCBurnin 100
+	// You'll want to achieve an acceptance rate of circa 0.33 in an MCMC (check the log file for acceptance rate figures). The sampleMCMCRangeProp parameter allows you to tweak this (the higher the sampleMCMCRangeProp, the lower the acceptance rate)
+	//sampleMCMCRangeProp 2
+	//sampleMCMCSampling 5
+
+	//	For cross-validation of parameter estimates. The pseudo-observed data can either be chosen among the retained simulations (retainedValidation) or among all simulations (randomValidation). The number of simulations to be used as pseudo-observed data is assigned to either one of the argument-tags.
+	//randomValidation 1000
+
+	//output settings
+	logFile ABC_estimation_2pop_simpleModel.log
+
+	verbose
 
 #  vi) Estimating neutral demographic parameters
   In LSD, steps ii)-v) above are first carried out assuming the observed data to constitute neutral (or genome-wide) regions. Assuming such, step v) generates the parameter posterior distributions for numerous putative neutral windows. To acquire an estimate of the neutral (global) posteriors, we run x.script.
