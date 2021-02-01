@@ -8,7 +8,7 @@
 
   ABC is currently implemented via ABCtoolbox (Wegmann et al., 2010). LSD-blotter takes the output of the ABC parameter estimates and estimates the departure of the inferred posteriors from neutral expectations. If conditioning the detection of selected (and linked) loci on multiple (joint) parameters, LSD also outputs the directionality of the deviation in the joint posterior with respect to the marginal parameters, and represents these as colours in the genome scan Manhattan plot.
 
-  We note that LSD is NOT a program, rather it is an analytical framework for identifying loci under selection via deviations in demographic parameters. As such, it is not constrained to any particular program. Rather, we envision a custom and modular implementation that may interface with any appropriate combination of coalescent simulator, summary statistics calculator and ABC program. Here, we simply propose an example implementation utilising msms, LSD-High/Low and ABCtoolbox. As currently implemented, LSD takes WGS data and bases its inference of selection on genomic windows (regions), rather than SNPs. That said, it can be extended to work on SNPs if implemented with a SNP-based summary statistics calculator and appropriate formatting of the coalescent simulations, though this would entail likely entail some scripting/programming.
+  We note that LSD is NOT a program, rather it is an analytical framework for identifying loci under selection via deviations in demographic parameters. As such, it is not constrained to any particular program. Rather, we envision a custom and modular implementation that may interface with any appropriate combination of coalescent simulator, summary statistics calculator and ABC program. Here, we simply propose an example implementation utilising msms, LSD-High/Low and ABCtoolbox. As currently implemented, LSD takes whole genome sequence (WGS) data and conditions the inference of selection on genomic windows (regions), rather than SNPs.
 
 ============================================
 
@@ -41,13 +41,18 @@ We first generate coalescent samples under a defined demographic model. Being re
    
    We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let’s assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 individuals each. The msms command line to generate coalescent samples for this demographic model would be e.g.:  
 	
-	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M -m 2 1 M
+	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M_12 -m 2 1 M_21
 	
-   where M is the migration rate (demographic parameter) that we condition the detection of selection on, and should be drawn from a reasonably large prior range.
-   Here, we simulate a single locus, and hence assume no recombination between loci and fixed recombination within locus.
+   where M is the scaled migration rate Nm (demographic parameter) that we condition the detection of selection on. In msms, M as well as most other parameters are scaled to a fixed, global N (=10,000). 
+
+If parameters are not known with confidence, as will usually be the case in empirical systems, we can define the effective population sizes as variables fraction_N (msms defines N in fractions of global scaling N = 10,000):
+
+	msms 80 1 -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
+
+   Here, we simulate a single locus, and hence assume no recombination between loci and fixed recombination within locus. Furthermore, we define the theta (-t) parameter as theta. 
 
    b) Calculating simulated summary statistics
-   
+   	
    To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
 	
 	python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -f ABC
@@ -58,7 +63,113 @@ We first generate coalescent samples under a defined demographic model. Being re
 	
    where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. Elaborate…
 
-Steps a) and b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Provide example.
+Steps a) and b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox allows the convenient ability to draw variables (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
+
+c) Performing Simulations with ABCtoolbox
+Example input file:
+
+	//	Example ABCtoolbox input file
+	//	*********************
+
+	// To set up ABCtoolbox to perform simulations
+	task	simulate
+
+	// Define the type of sampler to be used (standard, MCMC or PMC)
+	samplerType	standard
+	// samplerType	MCMC
+
+	// Define .est file, which defines the priors
+	estName	11.ABCPriors_simpleModel_4params.est
+
+	// Define the file which contains the observed sumstats. This must be in the same form as the simulated sumstats output
+	obsName	/path/example.obs
+
+	//	Output file name
+	outName	Amajus_simpleModel_4params
+
+	//	Number of simulations to perform
+	numSims	5000
+
+	//	Name of the simulation program. Must be an executable.
+	simProgram	/path/msms
+
+	//	This is the msms command line we use
+	//	We replace parameter (argument) values with tags defined in .est file, and define under simArgs (removing "msms")
+	simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 m_12 -m 2 1 m_21
+
+	//	This redirects the standard output to a file
+	simOutputRedirection SIMDATANAME
+
+	//	Name of the program calculating summary statistic
+	sumStatProgram /path/lsd_hi.py
+
+	//	Arguments to be passed to the program calculating summary statistics.
+	sumStatArgs	SIMDATANAME -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c /path/covDist_moments.txt  -f ABC
+
+	//	this outputs a sumstats file with default name summary_stats-temp.txt. Let's rename the output to summary_stats_temp.txt:
+	sumStatName summary_stats_temp.txt
+
+	//	Verbose output
+	verbose
+
+	//	Define name of log file
+	logFile	Amajus_simpleModel_4params.log
+
+	//Additional argument tags (required for ABC-MCMC)
+	//numCaliSims 100
+	//thresholdProp 0.1
+	//rangeProp 1
+
+Example priors file:
+
+	// Example ABCtoolbox priors and rules file
+	// *********************
+
+	// #### Example 4 parameter, 2 population model ####
+
+	// msms command line in inut file:
+	//	simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
+
+	[PARAMETERS]
+
+	//	#isInt? #name	#dist.#min	#max	
+
+	// 	Migration rates 
+	//	In msms, M_i_j represents the fraction of subpopulation i that is made up of migrants from subpopulation j in forward time. Hence pastward we have the rate that a lineage moves from deme i to j as M_i_j.
+	0	log_M_12	unif	-4	4 output
+	0	log_M_21	unif	-4	4 output
+
+	//	Effective population sizes 
+	//	Subpopulations are defined as fractions relative to N_effective 
+	0	log_N1	unif	2	7 output
+	0	log_N2	unif	2	7 output
+
+	//	Fixed parameters
+	//	Here, we'll want to keep sequence length fixed (so that ABCtoolbox can conveniently vary theta for us) and bounded to a certain maximum length (since we're operating under the assumption of no recombination within-locus and free recombination between-loci)
+	1	sequence_length	fixed	5000	hide
+	//	We define the mutation rate at a reasonable value (e.g. 1x10-8).
+	0	mutation_rate	fixed	0.00000001	hide
+	//	Define the number of independent loci (iterations)
+	1	no_loci	fixed	1	output
+
+
+	[RULES]
+
+	// E.g. continent population sizes should be larger than island population sizes
+
+
+	[COMPLEX PARAMETERS]
+
+	//	Various
+	0	theta = (4 * 5000 * mutation_rate * sequence_length)	output
+
+	// We output population size as absolute rather than ratio.
+	0	fraction_N1 = pow10(log_N1 - 4)	output
+	0	fraction_N2 = pow10(log_N2 - 4)	output
+
+	0	M_12 = pow10(log_M_12) output
+	0	M_21 = pow10(log_M_21) output
+
 
 #  ii) Calculating observed summary statistics
 To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
