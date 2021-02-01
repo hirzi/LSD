@@ -87,8 +87,16 @@ In these commands, we have applied the same filtering regime as well as mimicked
 #  vii) Calculating deviation from neutral expectations
   Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This assumes that step ii) has been performed where the observed data constitutes the full while genome or chromosome data. This can be run via the xxx scripts (this needs to be revised such that departure is from the diagonal defined by the neutral point). 
 
-#  vii) Visualise results	
+#  viii) Visualise results	
   To visualise the results, we run scriptx, which outputs a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci.
 
+
+============================================
+
+# Citation
+
+============================================
+
+# Notes
 
 NOTE: This page is currently a work in progress and will be continuously updated, e.g. with scripts and further instructions, in the coming weeks (February 2021).
