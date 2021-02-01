@@ -34,25 +34,28 @@ ABCtoolbox is available for download at: https://bitbucket.org/wegmannlab/abctoo
 
 # Instructions
 
-We first generate coalescent samples under a defined demographic model. Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data.
+We first generate coalescent samples under a defined demographic model. Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. As LSD runs in two-steps, steps ii-v
 
-#  i) GENERATING COALESCENT SIMULATIONS
-We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let’s assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 individuals each. The msms command line to generate coalescent samples for this demographic model would be e.g.:  
-msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M -m 2 1 M
+#  i) Generate simulated data
+	#  a) Generating coalescent simulations
+	We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let’s assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 individuals each. The msms command line to generate coalescent samples for this demographic model would be e.g.:  
+	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M -m 2 1 M
 
-where M is the migration rate (demographic parameter) that we condition the detection of selection on, and should be drawn from a reasonably large prior range.
+	where M is the migration rate (demographic parameter) that we condition the detection of selection on, and should be drawn from a reasonably large prior range.
 
-Here, we simulate a single locus, and hence assume no recombination between loci and fixed recombination within locus.
+	Here, we simulate a single locus, and hence assume no recombination between loci and fixed recombination within locus.
 
-#  ii) CALCULATING SIMULATED SUMMARY STATISTICS
-To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
-python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -f ABC
+	#  b) Calculating simulated summary statistics
+	To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
+	python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -f ABC
 
-Or if we want to simulate errors (at a certain error rate), filtering, pooled samples, and a specific coverage distrubtion, we can do e.g.:
-python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
-where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. Elaborate…
+	Or if we want to simulate errors (at a certain error rate), filtering, pooled samples, and a specific coverage distrubtion, we can do e.g.:
+	python3 lsd_hi.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
+	where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. Elaborate…
 
-#  iii) CALCULATING OBSERVED SUMMARY STATISTICS
+	  Steps a) and b), that is the generation of simulated summary statisticss, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Provide example.
+
+#  ii) Calculating observed summary statistics
 To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
 For the neutral regions (1st step), this list of files will comprise of neutral or genome wide regions e.g.:
 python lsd_high_sumstats_calculator_OBS.py extractedNeutralRegions_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 –pooled
@@ -62,25 +65,23 @@ python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0
 
 In these commands, we have applied the same filtering regime as well as mimicked the observed error rate as well as coverage distribution.
 
-#  iv) GENERATING SIMULATED DATA
-  Steps i) and ii), that is the generation of simulated summary statisticss, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Provide example.
-
-#  iv) REMOVE CORRELATION BETWEEN SUMMARY STATISTICS
+#  iii) Remove correlation between summary statistics
   To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation (Wegmann, Leuenberger, & Excoffier, 2009). We can calculate PLS coefficients via find_pls.r. Observed and simulated summary statistics can then be transformed into PLS components via the ABCTransform scripts.
   
-#  v) VALIDATION OF SIMULATIONS
-	Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the observed data. To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap (script). 
+#  iv) Validation of simulations
+  Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap (script). 
 
-#  vi) ABC PARAMETER ESTIMATION
-	Perform demographic parameter estimation via ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/estimation/parameter_estimation. In our example, we seek to obtain the joint posterior of reciprocal migration rates between the 2 populations. The ABCtoolbox parameter files should reflect this accordingly.
+#  v) ABC parameter estimation
+  Perform demographic parameter estimation via ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/estimation/parameter_estimation. In our example, we seek to obtain the joint posterior of reciprocal migration rates between the 2 populations. The ABCtoolbox parameter files should reflect this accordingly.
 
+#  vi) Estimating neutral demographic parameters
+  In LSD, steps ii)-v) above are first carried out assuming the observed data to constitute neutral (or genome-wide) regions. Assuming such, step v) generates the parameter posterior distributions for numerous putative neutral windows. To acquire an estimate of the neutral (global) posteriors, we run x.script.
 
+#  vii) Calculating deviation from neutral expectations
+  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This assumes that step ii) has been performed where the observed data constitutes the full while genome or chromosome data. This can be run via the xxx scripts (this needs to be revised such that departure is from the diagonal defined by the neutral point). 
 
-#  vi) CALCULATING DEVIATION FROM NEUTRAL EXPECATIONS
-	Calculate departure of window parameter estimates from neutral expectations. This can be run via the xxx scripts (this needs to be revised such that departure is from the diagonal defined by the neutral point). 
-
-	Plot Manhattan plot of …
-
+#  vii) Visualise results	
+  To visualise the results, we run scriptx, which outputs a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci.
 
 
 NOTE: This page is currently a work in progress and will be continuously updated, e.g. with scripts and further instructions, in the coming weeks (February 2021).
