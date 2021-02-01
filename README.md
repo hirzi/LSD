@@ -11,15 +11,17 @@
 
   We note that LSD is NOT a program, rather it is an analytical framework for identifying loci under selection via deviations in demographic parameters. As such, it is not constrained to any particular program. Rather, we envision a custom and modular implementation that may interface with any appropriate combination of coalescent simulator, summary statistics calculator and ABC program. Here, we simply propose an example implementation utilising msms, LSD-High/Low and ABCtoolbox. As currently implemented, LSD takes whole genome sequence (WGS) data and conditions the inference of selection on genomic windows (regions), rather than SNPs.
 
-============================================
+<img src="https://github.com/hirzi/LSD/blob/master/Example_ManhattanPlot.png" width="800"> 
+
+===================================================================
 
 # Requirements for LSD
 
-  Firstly, a demographic model needs to be defined. Definition and choice of the demographic model should i) be informed by knowledge of the study system, ii) be motivated by the model’s capacity to provide a useful approximation of a biological process of interest, and iii) be sufficiently simple to remain computationally tractable. Additionally, given that we condition the inference of selection on demographic parameters, the model should be formulated according to whether deviation in N_E or M_E is desired for the inference of selection. Finally, the model should be able to sufficiently describe the neutral genetic variation of the system. This can be validated by demonstrating that the observed data can be accurately and sufficiently captured by the simulated data (e.g. in terms of summary statistics)
+  Firstly, a demographic model needs to be defined. Definition and choice of the demographic model should i) be informed by knowledge of the study system, ii) be motivated by the model’s capacity to provide a useful approximation of a biological process of interest, and iii) be sufficiently simple to remain computationally tractable. Additionally, given that we condition the inference of selection on demographic parameters, the model should be formulated according to whether deviation in N<sub>E</sub> or M<sub>E</sub> is desired for the inference of selection. Finally, the model should be able to sufficiently describe the neutral genetic variation of the system. This can be validated by demonstrating that the observed data can be accurately and sufficiently captured by the simulated data (e.g. in terms of summary statistics)
 
   To estimate neutral demographic parameters in the first step, we need an a priori set of regions that we believe reflect neutral evolution. Such a set may be informed by the particular structural or functional class the sites belong to and may e.g. consist of genomic regions not linked to structural annotations. Alternatively, given that LSD is very robust to mis-specification of the neutral set, we may rely on the whole genome or a random subset of the genome to reflect neutral diversity. 
 
-============================================
+===================================================================
 
 # Installation
 
@@ -31,7 +33,7 @@ msms follows ms syntax. The authors of the program have written a convenient acc
  
 ABCtoolbox is available for download at: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Home
 
-============================================
+===================================================================
 
 # Instructions
 
@@ -444,11 +446,11 @@ To acquire an estimate of the neutral (global) posteriors, we run x.script.
 
 <img src="https://github.com/hirzi/LSD/blob/master/Example_ManhattanPlot.png" width="1000"> 
 
-============================================
+===================================================================
 
 # Citation
 
-============================================
+===================================================================
 
 # Notes
 
