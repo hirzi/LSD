@@ -250,7 +250,7 @@ Observed and simulated summary statistics can then be transformed into PLS compo
 #  iv) Validation of simulations
 Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. 
 
-<img src="https://github.com/hirzi/LSD/blob/master/Single_examplePlot.png" width="800">
+<img src="https://github.com/hirzi/LSD/blob/master/Single_examplePlot.png" width="600">
 
 To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap (script). 
 
@@ -363,7 +363,11 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 	verbose
 
 #  vi) Estimating neutral demographic parameters
-  In LSD, steps ii)-v) above are first carried out assuming the observed data to constitute neutral (or genome-wide) regions. Assuming such, step v) generates the parameter posterior distributions for numerous putative neutral windows. To acquire an estimate of the neutral (global) posteriors, we run x.script.
+  In LSD, steps ii)-v) above are first carried out assuming the observed data to constitute neutral (or genome-wide) regions. Assuming such, step v) generates the parameter posterior distributions for numerous putative neutral windows. 
+
+<img src="https://github.com/hirzi/LSD/blob/master/Combine_posteriors_github.png" width="600">
+
+To acquire an estimate of the neutral (global) posteriors, we run x.script.
 
 	# Import libraries
 	library(MASS)
