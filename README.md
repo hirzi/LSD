@@ -366,7 +366,7 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 #  vi) Estimating neutral demographic parameters
   In LSD, steps ii)-v) above are first carried out assuming the observed data to constitute neutral (or genome-wide) regions. Assuming such, step v) generates the parameter posterior distributions for numerous putative neutral windows. 
 
-<img src="https://github.com/hirzi/LSD/blob/master/Combine_posteriors_github.png" width="700">
+<img src="https://github.com/hirzi/LSD/blob/master/Combine_posteriors_github.png" width="625">
 
 To acquire an estimate of the neutral (global) posteriors, we run x.script.
 
