@@ -121,7 +121,9 @@ For more information on the available options for LSD-High, you can run:
 
 	python lsd_hi.py -h
 	
-If the observed data is of low-coverage (< 10x), we may not choose to retain the under
+If the observed data is of low-coverage (< 10x), it is generally better to work with genotype likelihoods than with called genotypes, so that uncertainty in the genotype is propagated and treated fairly. We can simulate low-coverage data from ms/msms via LSD-Low, which is a bash-scripted wrapper function for ANGSD and MsToGLF (http://www.popgen.dk/angsd/index.php/MsToGlf). MsToGLF and hence LSD-Low assume diploid sample size. Similar to LSD-High, LSD-Low allows the user to replicate (define) the depth and error rate. Additionally, the reference fasta index (of the observed data) must be supplied.
+
+	GLF_simulater_sumStats.sh -f msms_output -p 20,20 -l 5000 -d 5 -e 0.001 -r ref.fai -w working_dir -o output 2>&1 | tee -a log.file
 
 c) Efficiently generating simulations with ABCtoolbox
 
@@ -162,12 +164,18 @@ Example input file:
 	simOutputRedirection SIMDATANAME
 
 	//	Name of the program calculating summary statistic
+	//	LSD-High
 	sumStatProgram /path/lsd_hi.py
+	//	LSD-Low
+	//	sumStatProgram /path/lsd_low.sh
 
 	//	Arguments to be passed to the program calculating summary statistics.
+	//	LSD-High
 	sumStatArgs	SIMDATANAME -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c /path/covDist_moments.txt  -f ABC
+	//	LSD-Low
+	//sumStatArgs -f SIMDATANAME -p 20,20 -l 5000 -d 50 -e 0.001 -r /path/ref.fai -w . -o summary_stats_temp.txt
 
-	//	this outputs a sumstats file with default name summary_stats-temp.txt. Let's rename the output to summary_stats_temp.txt:
+	//	Indicate name of summary statistics output
 	sumStatName summary_stats_temp.txt
 
 	//	Verbose output
@@ -249,14 +257,22 @@ For more information on the available options for LSD-High, you can run:
 
 	python lsd_high_sumstats_calculator_OBS.py -h
 
+To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify LSD-Low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file.
+
 #  iii) Remove correlation between summary statistics
-To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, a strategy is two run this in two steps: 1) run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 2) Re-run find_pls.r with the optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
+To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, a strategy is two run this in two steps: 
+
+1) run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
+
+<img src="https://github.com/hirzi/LSD/blob/master/PLS_example.png" width="400">
+
+2) Re-run find_pls.r with the optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
 
 	# Define working directory
 	directory<-"/cluster/work/gdc/people/lhirzi/ABC_Simulations/"
 	
 	# Define number of PLS components
-	numComp<-6
+	numComp<-5
 	
 	# Define the starting column for the summary statistics
 	firstStat<-13
@@ -266,6 +282,14 @@ To account for potential correlation between summary statistics and to retain on
 
 Observed and simulated summary statistics can then be transformed into PLS components via the ABCTransform scripts.
   
+	task	transform
+	linearComb  PLSdef.txt
+	input	raw_sumstats.txt
+	output	PLStranformed_sumstats.txt
+	boxcox
+	numLinearComb	5
+
+
 #  iv) Validation of simulations
 Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. 
 
