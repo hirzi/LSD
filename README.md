@@ -9,7 +9,7 @@
 
   ABC is currently implemented via ABCtoolbox (Wegmann et al., 2010). LSD-blotter takes the output of the ABC parameter estimates and estimates the departure of the inferred posteriors from neutral expectations. If conditioning the detection of selected (and linked) loci on multiple (joint) parameters, LSD also outputs the directionality of the deviation in the joint posterior with respect to the marginal parameters, and represents these as colours in the genome scan Manhattan plot.
 
-  We note that LSD is NOT a program, rather it is an analytical framework for identifying loci under selection via deviations in demographic parameters. As such, it is not constrained to any particular program. Rather, we envision a custom and modular implementation that may interface with any appropriate combination of coalescent simulator, summary statistics calculator and ABC program. Here, we simply propose an example implementation utilising msms, LSD-High/Low and ABCtoolbox. As currently implemented, LSD takes whole genome sequence (WGS) data and conditions the inference of selection on genomic windows (regions), rather than SNPs.
+  We note that LSD is NOT a program, rather it is an analytical framework for identifying loci under selection via deviations in demographic parameters. As such, it is not constrained to any particular program. Rather, we envision a custom and modular implementation that may interface with any appropriate combination of coalescent simulator, summary statistics calculator and ABC program. Here, we simply propose an example implementation utilising msms, LSD-High/Low and ABCtoolbox. As currently implemented, LSD takes whole genome sequence (WGS) data and conditions the inference of selection on genomic windows (regions).
 
 <img src="https://github.com/hirzi/LSD/blob/master/ABC_demography_pipeline_general_landscape3.png" width="800"> 
 
@@ -19,7 +19,9 @@
 
   Firstly, a demographic model needs to be defined. Definition and choice of the demographic model should i) be informed by knowledge of the study system, ii) be motivated by the model’s capacity to provide a useful approximation of a biological process of interest, and iii) be sufficiently simple to remain computationally tractable. Additionally, given that we condition the inference of selection on demographic parameters, the model should be formulated according to whether deviation in N<sub>E</sub> or M<sub>E</sub> is desired for the inference of selection. Finally, the model should be able to sufficiently describe the neutral genetic variation of the system. This can be validated by demonstrating that the observed data can be accurately and sufficiently captured by the simulated data (e.g. in terms of summary statistics)
 
-  To estimate neutral demographic parameters in the first step, we need an a priori set of regions that we believe reflect neutral evolution. Such a set may be informed by the particular structural or functional class the sites belong to and may e.g. consist of genomic regions not linked to structural annotations. Alternatively, given that LSD is very robust to mis-specification of the neutral set, we may rely on the whole genome or a random subset of the genome to reflect neutral diversity. 
+  To estimate neutral demographic parameters in the first step, we need an a priori set of regions that we believe reflect neutral evolution. Such a set may be informed by the particular structural or functional class the sites belong to and may e.g. consist of genomic regions not linked to structural annotations. Alternatively, given that LSD is very robust to mis-specification of the neutral set, we may rely on the whole genome or a random subset of the genome to reflect neutral diversity.
+  
+  LSD, as currently implemented based on ABC, is computationally demanding and requires a fair amount of computing resources. This currently limits its use to users with access to computer clusters. 
 
 ===================================================================
 
@@ -33,7 +35,9 @@ msms follows ms syntax. The authors of the program have written a convenient acc
  
 ABCtoolbox is available for download at: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Home
 
-LSD accessory scripts are coded in Python 3 or R, and thus require that these programs are installed.
+LSD accessory scripts are coded in Python 3 (https://www.python.org/downloads/) or R (available at https://www.r-project.org/).
+
+Other programs that may be needed include SAMtools (http://www.htslib.org/download/) for manipulating the observed data and ANGSD (http://www.popgen.dk/angsd/index.php/Installation) for handling low-coverage data (via genotype likelihoods) in LSD-Low.
 
 ===================================================================
 
@@ -44,21 +48,21 @@ We first generate coalescent samples under a defined demographic model. Being re
 #  i) Generate simulated data
    a) Generating coalescent simulations
    
-   We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let’s assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 individuals each. The msms command line to generate coalescent samples for this demographic model would be e.g.:  
+   We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals each. The msms command line to generate coalescent samples for this demographic model would be:  
 	
 	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M_12 -m 2 1 M_21
 	
-   where M is the scaled migration rate Nm (demographic parameter) that we condition the detection of selection on. In msms, M as well as most other parameters are scaled to a fixed, global N (=10,000). 
+   where M is the scaled migration rate Nm (demographic parameter) that we condition the detection of selection on. Note that in msms, M as well as most other parameters are scaled to a fixed, global N<sub>E</sub> (=10,000). In addition, msms assume haploid number of samples (hence 40 haploid individuals per population)
 
-If parameters are not known with confidence, as will usually be the case in empirical systems, we can define the effective population sizes as variables fraction_N (msms defines N in fractions of global scaling N = 10,000):
+If parameters are not known with confidence, as will usually be the case with empirical systems, we can define the effective population sizes (and other demographic parameters) as variables (here by fraction_N). Note that msms defines N in fractions of the global N<sub>E</sub> (= 10,000). We do the same for parameter theta (-t).
 
 	msms 80 1 -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
-
-   Here, we simulate a single locus, and hence assume no recombination between loci and fixed recombination within locus. Furthermore, we define the theta (-t) parameter as theta. 
+	
+To explore parameter space, we want these variables to be drawn from a large, prior range. We will do this by embedding the msms command (as well as the following LSD-High command) in ABCtoolbox. 
 
    b) Calculating simulated summary statistics
    	
-   To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
+   To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Similar to msms, LSD-High assumes haploid sample numbers. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
 	
 	python lsd_hi.py msms_output -d 40 -d 40 -l 5000 -f ABC
 
@@ -66,13 +70,13 @@ If parameters are not known with confidence, as will usually be the case in empi
 	
 	python lsd_hi.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
 	
-   where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt. 
+   where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt (OPTIONAL). 
 
-To acquire this fitted distribution, we first need to acquire the empirical coverage distribution. Per-site coverage of empirical data can be acquired e.g. via samtools
+To acquire this fitted distribution, we first need to acquire the empirical coverage distribution. Per-site coverage of empirical data can be acquired e.g. via SAMtools
 
 	samtools depth bam.file > bam.depthPerSite
 
-We can then explore which theoretical distribution best captures this observed coverage distribution. 
+We can then explore which theoretical distribution that best captures this observed coverage distribution. 
 
 	# Load these libraries
 	library(fitdistrplus)
@@ -88,7 +92,7 @@ We can then explore which theoretical distribution best captures this observed c
 	# Column 3 lists the coverages for the population.
 	pop_data <- raw_data$V3
 
-	# Consider if you want to apply a max depth filter (e.g. for better visualisation)
+	# Consider if you want to apply a max depth filter
 	max_depth <- 500
 	pop_data_filtered <- pop_data[pop_data <= max_depth]
 
@@ -116,6 +120,8 @@ We specify the moments of the fitted distribution to a file with columns represe
 For more information on the available options for LSD-High, you can run:
 
 	python lsd_hi.py -h
+	
+If the observed data is of low-coverage (< 10x), we may not choose to retain the under
 
 c) Efficiently generating simulations with ABCtoolbox
 
