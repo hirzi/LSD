@@ -13,8 +13,6 @@
 
 <img src="https://github.com/hirzi/LSD/blob/master/ABC_demography_pipeline_general_landscape3.png" width="800"> 
 
-===================================================================
-
 # Requirements for LSD
 
   Firstly, a demographic model needs to be defined. Definition and choice of the demographic model should i) be informed by knowledge of the study system, ii) be motivated by the model’s capacity to provide a useful approximation of a biological process of interest, and iii) be sufficiently simple to remain computationally tractable. Additionally, given that we condition the inference of selection on demographic parameters, the model should be formulated according to whether deviation in N<sub>E</sub> or M<sub>E</sub> is desired for the inference of selection. Finally, the model should be able to sufficiently describe the neutral genetic variation of the system. This can be validated by demonstrating that the observed data can be accurately and sufficiently captured by the simulated data (e.g. in terms of summary statistics)
@@ -45,7 +43,25 @@ Other programs that may be needed include SAMtools (http://www.htslib.org/downlo
 
 We first generate coalescent samples under a defined demographic model. Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
 
-#  i) Generate simulated data
+#  i) Calculating observed summary statistics
+To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
+For the neutral regions (1st step), this list of files will comprise of neutral or genome wide regions e.g.:
+
+	python lsd_high_sumstats_calculator_OBS.py extractedNeutralRegions_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel_observedNeutralSumStats -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 –pooled
+
+For the genome scan (2nd step), we supply a list of genome or chromosome-wide sequences, and may add an additional argument (--windowStep 1000) should we wish to modulate the step-size of the sliding window e.g.:
+
+	python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel_observedSumStats -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 --windowStep 1000 –pooled
+
+In these commands, we have applied the same filtering regime as in the simulated data.
+
+For more information on the available options for LSD-High, you can run:
+
+	python lsd_high_sumstats_calculator_OBS.py -h
+
+To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify LSD-Low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file (NEED TO UPDATE).
+
+#  ii) Generate simulated data
    a) Generating coalescent simulations
    
    We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals each. The msms command line to generate coalescent samples for this demographic model would be:  
@@ -123,7 +139,7 @@ For more information on the available options for LSD-High, you can run:
 	
 If the observed data is of low-coverage (< 10x), it is generally better to work with genotype likelihoods than with called genotypes, so that uncertainty in the genotype is propagated and treated fairly. We can simulate low-coverage data from ms/msms via LSD-Low, which is a bash-scripted wrapper function for ANGSD and MsToGLF (http://www.popgen.dk/angsd/index.php/MsToGlf). MsToGLF and hence LSD-Low assume diploid sample size. Similar to LSD-High, LSD-Low allows the user to replicate (define) the depth and error rate. Additionally, the reference fasta index (of the observed data) must be supplied.
 
-	GLF_simulater_sumStats.sh -f msms_output -p 20,20 -l 5000 -d 5 -e 0.001 -r ref.fai -w working_dir -o output 2>&1 | tee -a log.file
+	lsd_low.sh -f msms_output -p 20,20 -l 5000 -d 5 -e 0.001 -r ref.fai -w working_dir -o output 2>&1 | tee -a log.file
 
 c) Efficiently generating simulations with ABCtoolbox
 
@@ -142,10 +158,10 @@ Example input file:
 	// samplerType	MCMC
 
 	// Define .est file, which defines the priors
-	estName	example_ABCsampler.est
+	estName	ABCSampler.priors
 
-	// Define the file which contains the observed sumstats. This must be in the same form as the simulated sumstats output
-	obsName	/path/example.obs
+	// Define the file which contains the observed sumstats. This is to ensure that the observed data (summary statistics) and the simulated data (summary statistics) are in the same format
+	obsName	/path/2popModel_observedSumStats
 
 	//	Output file name
 	outName	2pop_simpleModel_4params
@@ -240,24 +256,9 @@ Example priors file:
 	0	M_12 = pow10(log_M_12) output
 	0	M_21 = pow10(log_M_21) output
 
+Once we have defined this input (let's call this ABCSampler.input) and priors file (let's call this ABCSampler.priors), we can run generate the simulated data with ABCtoolbox as such:
 
-#  ii) Calculating observed summary statistics
-To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
-For the neutral regions (1st step), this list of files will comprise of neutral or genome wide regions e.g.:
-
-	python lsd_high_sumstats_calculator_OBS.py extractedNeutralRegions_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 –pooled
-
-For the genome scan (2nd step), we supply a list of genome or chromosome-wide sequences, and may add an additional argument (--windowStep 1000) should we wish to modulate the step-size of the sliding window e.g.:
-
-	python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 --windowStep 1000 –pooled
-
-In these commands, we have applied the same filtering regime as in the simulated data.
-
-For more information on the available options for LSD-High, you can run:
-
-	python lsd_high_sumstats_calculator_OBS.py -h
-
-To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify LSD-Low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file.
+	ABCtoolbox ABCSampler.input
 
 #  iii) Remove correlation between summary statistics
 To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, a strategy is two run this in two steps: 
@@ -280,7 +281,7 @@ To account for potential correlation between summary statistics and to retain on
 		# Define the columns for the free (i.e. non-fixed) parameters
 		p<-c(3,4,7)
 
-Observed and simulated summary statistics can then be transformed into PLS components via the ABCTransform scripts.
+Observed and simulated summary statistics can then be transformed into PLS components via defining such a parameter file (let us name it as transformPLS.input):
   
 	task	transform
 	linearComb  PLSdef.txt
@@ -289,6 +290,9 @@ Observed and simulated summary statistics can then be transformed into PLS compo
 	boxcox
 	numLinearComb	5
 
+And running:
+	
+	ABCtoolbox transformPLS.input
 
 #  iv) Validation of simulations
 Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. 
@@ -310,7 +314,7 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 	ABC_obs<-ABC_obs[,c(2:ncol(ABC_obs))]
 
 	# Number of PLS components (to plot!)
-	num_PLS <- 6
+	num_PLS <- 4
 
 	# For storing ggplot objects in a list using a loop: https://stackoverflow.com/questions/31993704/storing-ggplot-objects-in-a-list-from-within-loop-in-r
 	plot_list <- list()
@@ -479,7 +483,7 @@ To acquire an estimate of the neutral (global) posteriors, we run x.script.
 	print(combined_estimate)
 
 #  vii) Calculating deviation from neutral expectations
-  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This assumes that step ii) has been performed where the observed data constitutes the full while genome or chromosome data. This can be run via the xxx scripts (this needs to be revised such that departure is from the diagonal defined by the neutral point). 
+  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be run via the xxx scripts
 
 #  viii) Visualise results	
   To visualise the results, we run scriptx, which outputs a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci.
