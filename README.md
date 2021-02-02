@@ -270,13 +270,13 @@ To account for potential correlation between summary statistics and to retain on
 
 	# Define working directory
 	directory<-"/cluster/work/gdc/people/lhirzi/ABC_Simulations/"
-	
+
 	# Define number of PLS components
 	numComp<-5
-	
+
 	# Define the starting column for the summary statistics
 	firstStat<-13
-	
+
 	# Define the columns for the free (i.e. non-fixed) parameters
 	p<-c(3,4,7)
 
