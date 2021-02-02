@@ -43,7 +43,7 @@ Other programs that may be needed include SAMtools (http://www.htslib.org/downlo
 
 Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
 
-#  i) Calculating observed summary statistics
+#  i) Calculate summary statistics for observed data
 To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
 For the neutral regions (1st step), this list of files will comprise of neutral or genome wide regions e.g.:
 
@@ -414,7 +414,7 @@ Once we have defined this parameter file (let's call this file ABCEstimate.input
 
 	ABCtoolbox ABCEstimate.input
 
-#  vi) Estimating neutral demographic parameters
+#  vi) Estimate neutral demographic parameters
   As LSD first requires an estimate of neutral demographic parameters, this must first be estimated. Following parameter estimation for the putative neutral regions (or the genome-wide representation), we combine the neutral window posterior density distributions to inform of the global (neutral) parameter estimates.
 
 <img src="https://github.com/hirzi/LSD/blob/master/Combine_posteriors_github.png" width="625">
@@ -487,7 +487,7 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 	# Print result
 	print(combined_estimate)
 
-#  vii) Calculating deviation from neutral expectations
+#  vii) Calculate deviation from neutral expectations
   Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be run via the X script.
 
 #  viii) Visualise results	
