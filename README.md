@@ -19,7 +19,7 @@
 
   To estimate neutral demographic parameters in the first step, we need an a priori set of regions that we believe reflect neutral evolution. Such a set may be informed by the particular structural or functional class the sites belong to and may e.g. consist of genomic regions not linked to structural annotations. Alternatively, given that LSD is very robust to mis-specification of the neutral set, we may rely on the whole genome or a random subset of the genome to reflect neutral diversity.
   
-  LSD, as currently implemented based on ABC, is computationally demanding and requires a fair amount of computing resources. This currently limits its use to users with access to computer clusters. 
+  LSD, as currently implemented (based on ABC), is computationally demanding and requires a fair amount of computing resources. This currently limits its use to those with access to computer clusters. 
 
 ===================================================================
 
@@ -33,15 +33,15 @@ msms follows ms syntax. The authors of the program have written a convenient acc
  
 ABCtoolbox is available for download at: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Home
 
-LSD accessory scripts are coded in Python 3 (https://www.python.org/downloads/) or R (available at https://www.r-project.org/).
+LSD accessory scripts are coded in Python 3 (https://www.python.org/downloads/) and R (available at https://www.r-project.org/).
 
-Other programs that may be needed include SAMtools (http://www.htslib.org/download/) for manipulating the observed data and ANGSD (http://www.popgen.dk/angsd/index.php/Installation) for handling low-coverage data (via genotype likelihoods) in LSD-Low.
+Other programs that may be needed include SAMtools (http://www.htslib.org/download/) for manipulating the observed data (SAM/BAM files) and ANGSD (http://www.popgen.dk/angsd/index.php/Installation) for handling low-coverage data (via genotype likelihoods) in LSD-Low.
 
 ===================================================================
 
 # Instructions
 
-We first generate coalescent samples under a defined demographic model. Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
+Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
 
 #  i) Calculating observed summary statistics
 To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
@@ -62,19 +62,20 @@ For more information on the available options for LSD-High, you can run:
 To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify LSD-Low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file (NEED TO UPDATE).
 
 #  ii) Generate simulated data
+
    a) Generating coalescent simulations
    
    We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals each. The msms command line to generate coalescent samples for this demographic model would be:  
 	
 	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M_12 -m 2 1 M_21
 	
-   where M is the scaled migration rate Nm (demographic parameter) that we condition the detection of selection on. Note that in msms, M as well as most other parameters are scaled to a fixed, global N<sub>E</sub> (=10,000). In addition, msms assume haploid number of samples (hence 40 haploid individuals per population)
+   where M is the scaled migration rate Nm (demographic parameter) that we condition the detection of selection on. Note that in msms, M as well as most other parameters are scaled to a fixed, global N<sub>E</sub> (=10,000). msms assumes haploid number of samples, hence we provide 40 haploid individuals per population here.
 
-If parameters are not known with confidence, as will usually be the case with empirical systems, we can define the effective population sizes (and other demographic parameters) as variables (here by fraction_N). Note that msms defines N in fractions of the global N<sub>E</sub> (= 10,000). We do the same for parameter theta (-t).
+If parameters are not known with confidence, as will usually be the case with empirical systems, we can define the effective population sizes (and other demographic parameters, e.g. theta) as variables. Note that msms defines N in fractions of the global N<sub>E</sub> (= 10,000).
 
 	msms 80 1 -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
 	
-To explore parameter space, we want these variables to be drawn from a large, prior range. We will do this by embedding the msms command (as well as the following LSD-High command) in ABCtoolbox. 
+To explore parameter space (for parameter estimation), we want these variables to be drawn from large, prior ranges. We will do this by embedding the msms command, as well as the following LSD-High command, in ABCtoolbox. 
 
    b) Calculating simulated summary statistics
    	
@@ -131,21 +132,21 @@ We can then explore which theoretical distribution that best captures this obser
 	summary(pop_data_filtered_nbinom)
 	# This summary contains the moments of the distribution (e.g. mean and s.d. for normal distributions; mean and size (dispersal for negative binomial distributions). 
 
-We specify the moments of the fitted distribution to a file with columns representing individuals or pooled populations, the first row representing the mean of the distribution and the second row the s.d. or dispersal. Note that sequencing data is typically best fit by a negative binomial distribution.
+We specify the moments of the fitted distribution to a file; with columns representing individuals or pooled populations, the first row representing the mean of the distribution and the second row the standard deviation or dispersal. Note that sequencing data is typically best fit by a negative binomial distribution.
 
 For more information on the available options for LSD-High, you can run:
 
 	python lsd_hi.py -h
 	
-If the observed data is of low-coverage (< 10x), it is generally better to work with genotype likelihoods than with called genotypes, so that uncertainty in the genotype is propagated and treated fairly. We can simulate low-coverage data from ms/msms via LSD-Low, which is a bash-scripted wrapper function for ANGSD and MsToGLF (http://www.popgen.dk/angsd/index.php/MsToGlf). MsToGLF and hence LSD-Low assume diploid sample size. Similar to LSD-High, LSD-Low allows the user to replicate (define) the depth and error rate. Additionally, the reference fasta index (of the observed data) must be supplied.
+If the observed data is of low-coverage (< 10x), it is better to work with genotype likelihoods than with called genotypes, to ensure that the uncertainties in the genotypes are propagated and treated fairly. We can simulate low-coverage data from ms/msms via LSD-Low, which is a bash wrapper function for ANGSD and MsToGLF (http://www.popgen.dk/angsd/index.php/MsToGlf). MsToGLF and hence LSD-Low assume diploid sample size. Similar to LSD-High, LSD-Low allows the user to replicate (define) the depth and error rate. Additionally, the reference fasta index (of the observed data) must be supplied.
 
 	lsd_low.sh -f msms_output -p 20,20 -l 5000 -d 5 -e 0.001 -r ref.fai -w working_dir -o output 2>&1 | tee -a log.file
 
 c) Efficiently generating simulations with ABCtoolbox
 
-Steps a) and b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox allows the convenient ability to draw variables (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
+Steps ii.a) and ii.b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox confers the convenient ability to draw variables (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
 
-Example input file:
+Example input file for generating simulations with ABCtoolbox:
 
 	//	ABCtoolbox input file
 	//	*********************
@@ -206,7 +207,7 @@ Example input file:
 	//rangeProp 1
 
 
-Example priors file:
+Example priors file for generating simulations with ABCtoolbox:
 
 	// Example ABCtoolbox priors and rules file
 	// *********************
@@ -261,13 +262,13 @@ Once we have defined this input (let's call this ABCSampler.input) and priors fi
 	ABCtoolbox ABCSampler.input
 
 #  iii) Remove correlation between summary statistics
-To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, a strategy is two run this in two steps: 
+To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, our strategy is two run this in two steps: 
 
-1) run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
+a) run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
 
 <img src="https://github.com/hirzi/LSD/blob/master/PLS_example.png" width="400">
 
-2) Re-run find_pls.r with the optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
+b) Re-run find_pls.r with the optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
 
 		# Define working directory
 		directory<-"/cluster/work/gdc/people/lhirzi/ABC_Simulations/"
@@ -281,7 +282,7 @@ To account for potential correlation between summary statistics and to retain on
 		# Define the columns for the free (i.e. non-fixed) parameters
 		p<-c(3,4,7)
 
-Observed and simulated summary statistics can then be transformed into PLS components via defining such a parameter file (let us name it as transformPLS.input):
+Observed and simulated summary statistics can then be transformed into PLS components via defining such a parameter file (let's name it as transformPLS.input):
   
 	task	transform
 	linearComb  PLSdef.txt
@@ -295,11 +296,11 @@ And running:
 	ABCtoolbox transformPLS.input
 
 #  iv) Validation of simulations
-Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the (neutral or genome-wide) observed data. 
+Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the observed data. 
+
+To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap. 
 
 <img src="https://github.com/hirzi/LSD/blob/master/Sims_vs_Obs_examplePlot.png" width="500">
-
-To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap (script). 
 
 	# Import libraries
 	library(ggplot2)
@@ -332,7 +333,7 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 
 
 #  v) ABC parameter estimation
-  Perform demographic parameter estimation via ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/estimation/parameter_estimation. In our example, we seek to obtain the joint posterior of reciprocal migration rates between the 2 populations. The ABCtoolbox parameter files should reflect this accordingly.
+  Perform demographic parameter estimation via ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/estimation/parameter_estimation. In our example, we seek to obtain the joint posterior of reciprocal migration rates between the 2 populations. The ABCtoolbox parameter file should reflect this accordingly.
 
 	//----------------------------------------------------------------------
 	//ABCtoolbox input file for parameter estimation
@@ -409,12 +410,16 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 
 	verbose
 
+Once we have defined this parameter file (let's call this file ABCEstimate.input), we can perform the parameter estimation as such:
+
+	ABCtoolbox ABCEstimate.input
+
 #  vi) Estimating neutral demographic parameters
-  In LSD, steps ii)-v) above are first carried out assuming the observed data to constitute neutral (or genome-wide) regions. Assuming such, step v) generates the parameter posterior distributions for numerous putative neutral windows. 
+  As LSD first requires an estimate of neutral demographic parameters, this must first be estimated. Following parameter estimation for the putative neutral regions (or the genome-wide representation), we combine the neutral window posterior density distributions to inform of the global (neutral) parameter estimates.
 
 <img src="https://github.com/hirzi/LSD/blob/master/Combine_posteriors_github.png" width="625">
 
-To acquire an estimate of the neutral (global) posteriors, we run x.script.
+To acquire an estimate of the neutral (global) posteriors, we run can do as follows, taking the output of the previous step (v).
 
 	# Import libraries
 	library(MASS)
@@ -483,7 +488,7 @@ To acquire an estimate of the neutral (global) posteriors, we run x.script.
 	print(combined_estimate)
 
 #  vii) Calculating deviation from neutral expectations
-  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be run via the xxx scripts
+  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be run via the X script.
 
 #  viii) Visualise results	
   To visualise the results, we run scriptx, which outputs a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci.
