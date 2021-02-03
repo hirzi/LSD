@@ -491,7 +491,7 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
   Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations, via lsd_scan.R (NEED TO UPDATE).
 
 #  viii) Visualise results	
-  To visualise the results, we run scriptx, which outputs a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci.
+  To visualise the results, we run lsd_blotter.R (NEED TO UPDATE), which outputs a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci.
 
 <img src="https://github.com/hirzi/LSD/blob/master/Example_ManhattanPlot.png" width="1000"> 
 
