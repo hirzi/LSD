@@ -165,7 +165,7 @@ Example input file for generating simulations with ABCtoolbox:
 	obsName	/path/2popModel_observedSumStats
 
 	//	Output file name
-	outName	2pop_simpleModel_4params
+	outName	2pop_simpleModel_4params_simulatedSumStats
 
 	//	Number of simulations to perform
 	numSims	5000
@@ -199,7 +199,7 @@ Example input file for generating simulations with ABCtoolbox:
 	verbose
 
 	//	Define name of log file
-	logFile	Amajus_simpleModel_4params.log
+	logFile	2pop_simpleModel_4params_simulatedSumStats.log
 
 	//Additional argument tags (required for ABC-MCMC)
 	//numCaliSims 100
@@ -271,7 +271,7 @@ a) run for # PLS components = # of summary statistics. find_pls.r will output a 
 b) Re-run find_pls.r with the optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
 
 		# Define working directory
-		directory<-"/cluster/work/gdc/people/lhirzi/ABC_Simulations/"
+		directory<-"/path/"
 
 		# Define number of PLS components
 		numComp<-5
@@ -280,7 +280,7 @@ b) Re-run find_pls.r with the optimum number of PLS components. Be sure to modif
 		firstStat<-13
 
 		# Define the columns for the free (i.e. non-fixed) parameters
-		p<-c(3,4,7)
+		p<-c(2,3,4,5)
 
 Observed and simulated summary statistics can then be transformed into PLS components via defining such a parameter file (let's name it as transformPLS.input):
   
