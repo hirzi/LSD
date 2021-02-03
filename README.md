@@ -35,7 +35,7 @@ ABCtoolbox is available for download at: https://bitbucket.org/wegmannlab/abctoo
 
 LSD accessory scripts are coded in Python 3 (https://www.python.org/downloads/) and R (available at https://www.r-project.org/).
 
-Other programs that may be needed include SAMtools (http://www.htslib.org/download/) for manipulating the observed data (SAM/BAM files) and ANGSD (http://www.popgen.dk/angsd/index.php/Installation) for handling low-coverage data (via genotype likelihoods) in LSD-Low.
+Other programs that may be needed include SAMtools (http://www.htslib.org/download/) for manipulating observed data (SAM/BAM files) and ANGSD (http://www.popgen.dk/angsd/index.php/Installation) for handling low-coverage data (via genotype likelihoods) in LSD-Low.
 
 ===================================================================
 
