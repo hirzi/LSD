@@ -499,6 +499,9 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 
 # Citation
 
+Hirzi Luqman, Alex Widmer, Simone Fior, Daniel Wegmann
+bioRxiv 2020.07.20.211581; doi: https://doi.org/10.1101/2020.07.20.211581
+
 ===================================================================
 
 # Notes
