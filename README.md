@@ -287,7 +287,7 @@ Observed and simulated summary statistics can then be transformed into PLS compo
 	task	transform
 	linearComb  PLSdef.txt
 	input	2pop_simpleModel_4params_simulatedSumStats
-	output	2pop_simpleModel_4params_PLStranformed_simulatedSumStats.txt
+	output	2pop_simpleModel_4params_PLStransformed_simulatedSumStats.txt
 	boxcox
 	numLinearComb	5
 
@@ -307,8 +307,8 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 	library(gridExtra)
 
 	# Import data
-	ABC_rej <- read.delim("./PLS_transformed_simulatedSumStats.txt.txt")
-	ABC_obs<-read.delim("./PLS_transformed_observedSumStats.txt")
+	ABC_rej <- read.delim("./2pop_simpleModel_4params_PLStransformed_simulatedSumStats.txt")
+	ABC_obs<-read.delim("./2popModel_PLStransformed_observedSumStats.txt")
 
 	# Select column with PLS LinearCombination_n
 	ABC_rej<-ABC_rej[c(1:5000),c(12:ncol(ABC_rej))]
@@ -351,7 +351,7 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 	obsName	/path/example_PLS5.obs
 
 	//	Simulated data
-	simName /path/PLS_transformed_simulatedSumStats.txt
+	simName /path/2pop_simpleModel_4params_PLStransformed_simulatedSumStats.txt
 
 	//	Specifies the columns containing the parameters of interest in the file containing the summary statistics of the simulated data, i.e. its assigned values are numbers indicating the position of the respective columns in the file.
 	params 2-3
@@ -426,11 +426,11 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 	library(RColorBrewer)
 
 	# Define input variables
-	nparams <- 2 # number of parameters
+	nparams <- 4 # number of parameters
 
 	# Directory and prefix
-	master_dir <- "/Users/luqman/Desktop/ABC Simulation Study/Robustness Analyses/"
-	results_dir <- "Estimation_results_2pop_simpleModel_poolSim_t10_neutral_FIXED_without0segsiteloci_PLS15_m5m5_St1_SiPop1_0.1_SiPop2_0.1_SPop1_200_SPop2_200_Chr_withSFC_jointGrid33"
+	master_dir <- "/path/"
+	results_dir <- "Estimation_results_2pop_simpleModel"
 	prefix <- "ABC_estimation_2pop_simpleModelmodel0_MarginalPosteriorDensities_Obs"
 	setwd(paste0(master_dir,results_dir))
 
@@ -512,4 +512,3 @@ Hirzi Luqman, Alex Widmer, Simone Fior, Daniel Wegmann; bioRxiv 2020.07.20.21158
 # Notes
 
 NOTE: This page is currently a work in progress and will be continuously updated, e.g. with scripts and further instructions, in the coming weeks (February 2021).
-
