@@ -44,16 +44,25 @@ Other programs that may be needed include SAMtools (http://www.htslib.org/downlo
 Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
 
 #  i) Calculate summary statistics for observed data
-To calculate observed summary statistics, we supply the command with a text file containing a list of mpileup files.
-For the neutral regions (1st step), this list of files will comprise of neutral or genome wide regions e.g.:
+Mapped sequenced data is generally held in BAM format. We thus assume this to be the starting point for most users. LSD however requires as input mpileup format files. To convert BAM to mpileup format, we can do as such:
+
+	samtools mpileup prefix.bam > prefix.mpileup
+
+Because LSD works in two-steps and first requires a set of putatively neutral regions, we do this for whole-genome BAMs as well for neutral region BAMs. The latter can be produced by extracting a putative set of neutral regions (e.g. all sites outside the structural annotation with a conservative flanking buffer) from the whole genome BAMs. In case this is not possible (e.g. scarce prior knowledge, limited genomic resources), we can also rely on the whole genome BAMs to reflect neutral diversity. 
+
+We do this for all individuals (or pooled populations) of interest. Once we have a list of mpileup files, we write a text file containing the list of these mpileup files. It is important to make sure that the order of the files in this text file (i.e. the order of individuals and populations) is CONSISTENT with that in the subsequent simulated models (i.e. in the ms/msms commands).
+
+Once we have this text file (containing the list of ordered mpileup files), we can calculate the observed summary statistics for the whole system in one go.
+
+For the neutral regions (1st step), this list of files will comprise mpileup files of extracted neutral or genome-wide regions e.g.:
 
 	python lsd_high_sumstats_calculator_OBS.py extractedNeutralRegions_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel_observedNeutralSumStats -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 –pooled
 
-For the genome scan (2nd step), we supply a list of genome or chromosome-wide sequences, and may add an additional argument (--windowStep 1000) should we wish to modulate the step-size of the sliding window e.g.:
+For the genome scan (2nd step), we supply a list of whole-genome (or chromosome or region) mpileup files, and may add an additional argument (--windowStep 1000) should we wish to modulate the step-size of the sliding window e.g.:
 
 	python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel_observedSumStats -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 --windowStep 1000 –pooled
 
-In these commands, we have applied the same filtering regime as in the simulated data.
+In these commands, we will apply the same filtering regime as in the simulated data.
 
 For more information on the available options, you can run:
 
@@ -83,7 +92,7 @@ To explore parameter space (for parameter estimation), we want these variables t
 	
 	python lsd_high.py msms_output -d 40 -d 40 -l 5000 -f ABC
 
-   Or if we want to simulate errors (at a certain error rate), filtering, pooled samples, and a specific coverage distrubtion, we can do e.g.:
+   Or if we want to simulate errors (at a certain error rate), filtering (identical to that used for the observed data), pooled samples, and a specific coverage distribution, we can do e.g.:
 	
 	python lsd_high.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
 	
