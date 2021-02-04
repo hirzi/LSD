@@ -55,11 +55,11 @@ For the genome scan (2nd step), we supply a list of genome or chromosome-wide se
 
 In these commands, we have applied the same filtering regime as in the simulated data.
 
-For more information on the available options for LSD-High, you can run:
+For more information on the available options, you can run:
 
 	python lsd_high_sumstats_calculator_OBS.py -h
 
-To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify LSD-Low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file (NEED TO UPDATE).
+To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify lsd_low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file (NEED TO UPDATE).
 
 #  ii) Generate simulated data
 
@@ -81,11 +81,11 @@ To explore parameter space (for parameter estimation), we want these variables t
    	
    To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Similar to msms, LSD-High assumes haploid sample numbers. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
 	
-	python lsd_hi.py msms_output -d 40 -d 40 -l 5000 -f ABC
+	python lsd_high.py msms_output -d 40 -d 40 -l 5000 -f ABC
 
    Or if we want to simulate errors (at a certain error rate), filtering, pooled samples, and a specific coverage distrubtion, we can do e.g.:
 	
-	python lsd_hi.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
+	python lsd_high.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
 	
    where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt (OPTIONAL). 
 
@@ -136,7 +136,7 @@ We specify the moments of the fitted distribution to a file; with columns repres
 
 For more information on the available options for LSD-High, you can run:
 
-	python lsd_hi.py -h
+	python lsd_high.py -h
 	
 If the observed data is of low-coverage (< 10x), it is better to work with genotype likelihoods than with called genotypes, to ensure that the uncertainties in the genotypes are propagated and treated fairly. We can simulate low-coverage data from ms/msms via LSD-Low, which is a bash wrapper function for ANGSD and MsToGLF (http://www.popgen.dk/angsd/index.php/MsToGlf). MsToGLF and hence LSD-Low assume diploid sample size. Similar to LSD-High, LSD-Low allows the user to replicate (define) the depth and error rate. Additionally, the reference fasta index (of the observed data) must be supplied.
 
@@ -182,7 +182,7 @@ Example input file for generating simulations with ABCtoolbox:
 
 	//	Name of the program calculating summary statistic
 	//	LSD-High
-	sumStatProgram /path/lsd_hi.py
+	sumStatProgram /path/lsd_high.py
 	//	LSD-Low
 	//	sumStatProgram /path/lsd_low.sh
 
@@ -488,10 +488,10 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 	print(combined_estimate)
 
 #  vii) Calculate deviation from neutral expectations
-  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations, via lsd_scan.R (NEED TO UPDATE).
+  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be performed via lsd_scan.R. Note that modifications to the script (reflecting defined paths and file naming scheme) is required.
 
 #  viii) Visualise results	
-  To visualise the results, we run lsd_blotter.R (NEED TO UPDATE), which outputs a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci.
+  To visualise the results, we can generate a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci. An example plotting script is provided (lsd_blotter.R)
 
 <img src="https://github.com/hirzi/LSD/blob/master/Example_ManhattanPlot.png" width="1000"> 
 
