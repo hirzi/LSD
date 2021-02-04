@@ -74,13 +74,13 @@ To calculate observed summary statistics under low-coverage, we use ANGSD. A con
 
    a) Generating coalescent simulations
    
-   We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals each. The msms command line to generate coalescent samples for this demographic model would be:  
+   We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals. The msms command line to generate coalescent samples for this demographic model would be:  
 	
 	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M_12 -m 2 1 M_21
 	
    where M is the scaled migration rate Nm (demographic parameter) that we condition the detection of selection on. Note that in msms, M as well as most other parameters are scaled to a fixed, global N<sub>E</sub> (=10,000). msms assumes haploid number of samples, hence we provide 40 haploid individuals per population here.
 
-If parameters are not known with confidence, as will usually be the case with empirical systems, we can define the effective population sizes (and other demographic parameters, e.g. theta) as variables. Note that msms defines N in fractions of the global N<sub>E</sub> (= 10,000).
+If parameters are not known with confidence, as will usually be the case with empirical systems, we can define the effective population sizes (and other demographic parameters) as variables. Note that msms defines N in fractions of the global N<sub>E</sub> (= 10,000).
 
 	msms 80 1 -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
 	
