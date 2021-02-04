@@ -1,0 +1,51 @@
+//	ABCtoolbox input file
+//	*********************
+
+// To set up ABCtoolbox to perform simulations
+task	simulate
+
+// Define the type of sampler to be used (standard, MCMC or PMC)
+samplerType	standard
+// samplerType	MCMC
+
+// Define .est file, which defines the priors
+estName	example_ABCsampler.est
+
+// Define the file which contains the observed sumstats. This must be in the same form as the simulated sumstats output
+obsName	/path/example.obs
+
+//	Output file name
+outName	2pop_simpleModel_4params
+
+//	Number of simulations to perform
+numSims	5000
+
+//	Name of the simulation program. Must be an executable.
+simProgram	/path/msms
+
+//	This is the msms command line we use
+//	We replace parameter (argument) values with tags defined in .est file, and define under simArgs (removing "msms")
+simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
+
+//	This redirects the standard output to a file
+simOutputRedirection SIMDATANAME
+
+//	Name of the program calculating summary statistic
+sumStatProgram /path/lsd_hi.py
+
+//	Arguments to be passed to the program calculating summary statistics.
+sumStatArgs	SIMDATANAME -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c /path/covDist_moments.txt  -f ABC
+
+//	this outputs a sumstats file with default name summary_stats-temp.txt. Let's rename the output to summary_stats_temp.txt:
+sumStatName summary_stats_temp.txt
+
+//	Verbose output
+verbose
+
+//	Define name of log file
+logFile	Amajus_simpleModel_4params.log
+
+//Additional argument tags (required for ABC-MCMC)
+//numCaliSims 100
+//thresholdProp 0.1
+//rangeProp 1

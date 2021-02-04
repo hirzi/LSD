@@ -1,0 +1,47 @@
+// ABCtoolbox priors and rules file
+// *********************
+
+// #### Example 4 parameter, 2 population model ####
+
+// msms command line in inut file:
+//	simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
+
+[PARAMETERS]
+
+//	#isInt? #name	#dist.#min	#max	
+
+// 	Migration rates 
+//	In msms, M_i_j represents the fraction of subpopulation i that is made up of migrants from subpopulation j in forward time. Hence pastward we have the rate that a lineage moves from deme i to j as M_i_j.
+0	log_M_12	unif	-4	4 output
+0	log_M_21	unif	-4	4 output
+
+//	Effective population sizes 
+//	Subpopulations are defined as fractions relative to N_effective 
+0	log_N1	unif	2	7 output
+0	log_N2	unif	2	7 output
+
+//	Fixed parameters
+//	Here, we'll want to keep sequence length fixed (so that ABCtoolbox can conveniently vary theta for us) and bounded to a certain maximum length (since we're operating under the assumption of no recombination within-locus and free recombination between-loci)
+1	sequence_length	fixed	5000	hide
+//	We define the mutation rate at a reasonable value (e.g. 1x10-8).
+0	mutation_rate	fixed	0.00000001	hide
+//	Define the number of independent loci (iterations)
+1	no_loci	fixed	1	output
+
+
+[RULES]
+
+// E.g. continent population sizes should be larger than island population sizes
+
+
+[COMPLEX PARAMETERS]
+
+//	Various
+0	theta = (4 * 5000 * mutation_rate * sequence_length)	output
+
+// We output population size as absolute rather than ratio.
+0	fraction_N1 = pow10(log_N1 - 4)	output
+0	fraction_N2 = pow10(log_N2 - 4)	output
+
+0	M_12 = pow10(log_M_12) output
+0	M_21 = pow10(log_M_21) output

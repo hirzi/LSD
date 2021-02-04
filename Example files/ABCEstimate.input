@@ -1,0 +1,74 @@
+//----------------------------------------------------------------------
+//ABCtoolbox input file for parameter estimation
+//----------------------------------------------------------------------
+
+//	To estimate parameters
+task estimate
+
+//	Define estimation method
+//	Recall that when setting independentReplicates, the obs file should contain multiple entries (one per line), where each entry is the sumstats calculated from one (neutral) region. The algorithm then consider each region as an independent replicate, on which it subsequently calculates the posteriors.
+//estimationType standard
+//estimationType independentReplicates
+
+//	Observed data
+obsName	/path/example_PLS5.obs
+
+//	Simulated data
+simName /path/2pop_simpleModel_4params_PLStransformed_simulatedSumStats.txt
+
+//	Specifies the columns containing the parameters of interest in the file containing the summary statistics of the simulated data, i.e. its assigned values are numbers indicating the position of the respective columns in the file.
+params 2-3
+
+//	Rejection settings
+
+//	Specifies the number of simulations in the file containing the summary statistics of the simulated data to be taken into account.
+maxReadSims 10000000
+
+//	Specifies the number of simulations closest to the observed data to be selected from the simulations.
+numRetained 2500
+
+//	Calculates the tukey depth P-value. This calculates the Tukey depth (the minimum number of sample points on one side of a hyperplane through the point, i.e. a measure of how centered a point is in an overall cloud of points) of the observed data and contrasts it with the Tukey depth of the distribution of all retained simulation points (hence argument should be equal or less than numRetained), to produce a p-value. If the observed point is close to the center of the retained simulations, we expect that most 
+//tukeyPValue 500
+
+//	Calculates the marginal density P-value. Similar in approach to the above, this tag calculates the P-value for the marginal density of the observed datapoint by doing so for the observed datapoint and the retained simulations (distribution)
+//marDensPValue 500
+
+//	If the parameter writeRetained is defined and set to 1, ABCestimator writes two files: one containing the parameter and statistics of the retained simulations and one with the smoothed parameter distribution of the retained simula- tions (see
+writeRetained 1
+
+//	To remove highly correlated statistics
+pruneCorrelatedStats
+
+//	Specifies whether (1) or not (0) the statistics are standardized before the distance is calculated.
+standardizeStats 1
+
+//	Posterior estimation settings
+//	Since ABCestimator standardizes the parameters internally to the range [0, 1] diracPeakWidth, the same diracPeakWidth value is used for all parameters. Too small values of diracPeakWidth will result in wiggly posterior curves, too large values might unduly smear out the curves. The best advice is to run the calculations with several choices for diracPeakWidth. The choice of diracPeakWidth depends on the number of retained simulations: the larger the number of retained parameter values, the sharper the smaller diracPeakWidth can be chosen in order to still get a rather smooth result. If the parameter diracPeakWidth is not defined, ABCestimator uses as value of 0.001, unless the parameter numRetained is defined. In this case ABCestimator sets σk = 1/N, where N is the number of simulations to retain, as proposed by Leuenberger and Wegmann (2009).
+//diracPeakWidth 0.02
+
+//	ABCestimator calculates the density of the marginal posteriors on a number of equally spaced points along the range of every parameter. The number of such points is specified with the parameter posteriorDensityPoints with default value 100.
+posteriorDensityPoints 100
+
+//	Should you wish to estimate joint posteriors
+jointPosteriors log_M_12,log_M_21
+//	Assuming grid sampling; the number of points (density) along each dimension (parameter). In case of using jointSamplesMCMC, this nonetheless needs to be set to a minimum of 2.
+jointPosteriorDensityPoints 33
+
+// 	Should you wish to MCMC sample. For reference see: https://bitbucket.org/wegmannlab/abctoolbox/src/master/
+//jointSamplesMCMC 10000
+//sampleMCMCStart jointmode
+//sampleMCMCBurnin 100
+//	You'll want to achieve an acceptance rate of circa 0.33 in an MCMC (check the log file for acceptance rate figures). The sampleMCMCRangeProp parameter allows you to tweak this (the higher the sampleMCMCRangeProp, the lower the acceptance rate)
+//sampleMCMCRangeProp 2
+//sampleMCMCSampling 5
+
+//	For cross-validation of parameter estimates. The pseudo-observed data can either be chosen among the retained simulations (retainedValidation) or among all simulations (randomValidation). The number of simulations to be used as pseudo-observed data is assigned to either one of the argument-tags.
+//randomValidation 1000
+
+//	Specify the output file prefix
+outputPrefix ABC_estimation_2pop_simpleModel_
+
+//	Specify output log file name
+logFile ABC_estimation_2pop_simpleModel.log
+
+verbose
