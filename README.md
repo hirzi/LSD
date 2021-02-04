@@ -277,7 +277,7 @@ a) Run for # PLS components = # of summary statistics. find_pls.r will output a 
 
 <img src="https://github.com/hirzi/LSD/blob/master/Example figures/PLS_example.png" width="400">
 
-b) Here, the plot suggest that the data (multitude of summary statistics) can be efficiently summarised by 5 PLS components. Re-run find_pls.r with this optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
+b) Here, the plot suggest that the data (multitude of summary statistics) can be sufficiently summarised by 5 PLS components. Re-run find_pls.r with this optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
 
 		# Define working directory
 		directory<-"/path/"
