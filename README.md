@@ -44,7 +44,7 @@ Other programs that may be needed include SAMtools (http://www.htslib.org/downlo
 Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
 
 #  i) Calculate summary statistics for observed data
-Mapped sequenced data is generally held in BAM format. We thus assume this to be the starting point for most users. LSD however requires as input mpileup format files. To convert BAM to mpileup format, we can do as such:
+Mapped sequenced data are generally held in BAM format. We thus assume this to be the starting point for most users. LSD however requires as input mpileup format files. To convert BAM to mpileup format, we can do as such:
 
 	samtools mpileup prefix.bam > prefix.mpileup
 
