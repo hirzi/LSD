@@ -493,7 +493,9 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 #  viii) Visualise results	
   To visualise the results, we can generate a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci. An example plotting script is provided (lsd_blotter.R)
 
-<img src="https://github.com/hirzi/LSD/blob/master/Example_ManhattanPlot.png" width="1000"> 
+<img src="https://github.com/hirzi/LSD/blob/master/SingleChrManhattanPlot_example.png" width="1000"> 
+
+<img src="https://github.com/hirzi/LSD/blob/master/MultiChrManhattanPlot_example.png" width="1000"> 
 
 ===================================================================
 
