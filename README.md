@@ -76,13 +76,13 @@ To calculate observed summary statistics under low-coverage, we use ANGSD. A con
    
    We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals. The msms command line to generate coalescent samples for this demographic model would be:  
 	
-	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M_12 -m 2 1 M_21
+	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M_12 -m 2 1 M_21 > msms_output
 	
    where M is the scaled migration rate Nm (demographic parameter) that we condition the detection of selection on. Note that in msms, M as well as most other parameters are scaled to a fixed, global N<sub>E</sub> (=10,000). msms assumes haploid number of samples, hence we provide 40 haploid individuals per population here.
 
 If parameters are not known with confidence, as will usually be the case with empirical systems, we can define the effective population sizes (and other demographic parameters) as variables. Note that msms defines N in fractions of the global N<sub>E</sub> (= 10,000).
 
-	msms 80 1 -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
+	msms 80 1 -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21 > msms_output
 	
 To explore parameter space (for parameter estimation), we want these variables to be drawn from large, prior ranges. We will do this by embedding the msms command, as well as the following LSD-High command, in ABCtoolbox. 
 
@@ -98,11 +98,11 @@ To explore parameter space (for parameter estimation), we want these variables t
 	
    where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt (OPTIONAL). 
 
-To acquire this fitted distribution, we first need to acquire the empirical coverage distribution. Per-site coverage of empirical data can be acquired e.g. via SAMtools
+To acquire this fitted distribution, we first need to acquire the empirical coverage distribution. Per-site coverage of empirical data can be acquired e.g. via SAMtools:
 
 	samtools depth bam.file > bam.depthPerSite
 
-We can then explore which theoretical distribution that best captures this observed coverage distribution. 
+We can then explore which theoretical distribution best captures this observed coverage distribution. 
 
 	# Load these libraries
 	library(fitdistrplus)
@@ -139,7 +139,7 @@ We can then explore which theoretical distribution that best captures this obser
 	# Output the summary
 	summary(pop_data_nbinom)
 	summary(pop_data_filtered_nbinom)
-	# This summary contains the moments of the distribution (e.g. mean and s.d. for normal distributions; mean and size (dispersal for negative binomial distributions). 
+	# This summary contains the moments of the distribution (e.g. mean and s.d. for normal distributions; mean and size (dispersal) for negative binomial distributions). 
 
 We specify the moments of the fitted distribution to a file; with columns representing individuals or pooled populations, the first row representing the mean of the distribution and the second row the standard deviation or dispersal. Note that sequencing data is typically best fit by a negative binomial distribution.
 
@@ -147,13 +147,13 @@ For more information on the available options for LSD-High, you can run:
 
 	python lsd_high.py -h
 	
-If the observed data is of low-coverage (< 10x), it is better to work with genotype likelihoods than with called genotypes, to ensure that the uncertainties in the genotypes are propagated and treated fairly. We can simulate low-coverage data from ms/msms via LSD-Low, which is a bash wrapper function for ANGSD and MsToGLF (http://www.popgen.dk/angsd/index.php/MsToGlf). MsToGLF and hence LSD-Low assume diploid sample size. Similar to LSD-High, LSD-Low allows the user to replicate (define) the depth and error rate. Additionally, the reference fasta index (of the observed data) must be supplied.
+If the observed data is of low-coverage (< 10x), it is better to work with genotype likelihoods than with called genotypes, to ensure that the uncertainties in the genotypes are propagated and treated fairly. We can simulate low-coverage data from ms/msms via LSD-Low, which is a bash wrapper function for MsToGLF (http://www.popgen.dk/angsd/index.php/MsToGlf) and ANGSD. MsToGLF and hence LSD-Low assume diploid sample size. Similar to LSD-High, LSD-Low allows the user to replicate (define) the depth and error rate. Additionally, the reference fasta index (of the observed data) must be supplied.
 
 	lsd_low.sh -f msms_output -p 20,20 -l 5000 -d 5 -e 0.001 -r ref.fai -w working_dir -o output 2>&1 | tee -a log.file
 
 c) Efficiently generating simulations with ABCtoolbox
 
-Steps ii.a) and ii.b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox confers the convenient ability to draw variables (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
+Steps ii.a) and ii.b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox confers the convenient ability to draw variable parameters (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
 
 Example input file for generating simulations with ABCtoolbox:
 
@@ -266,12 +266,12 @@ Example priors file for generating simulations with ABCtoolbox:
 	0	M_12 = pow10(log_M_12) output
 	0	M_21 = pow10(log_M_21) output
 
-Once we have defined this input (let's call this ABCSampler.input) and priors file (let's call this ABCSampler.priors), we can run generate the simulated data with ABCtoolbox as such:
+Once we have defined these input (let's call this ABCSampler.input) and priors files (let's call this ABCSampler.priors), we can run generate the simulated data with ABCtoolbox as such:
 
 	ABCtoolbox ABCSampler.input
 
 #  iii) Remove correlation between summary statistics
-To account for potential correlation between summary statistics and to retain only their informative components, we apply a Partial Least Squares transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, our strategy is two run this in two steps: 
+To account for potential correlation between summary statistics and retain only their informative components, we apply a Partial Least Squares (PLS) transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, our strategy is two run this in two steps: 
 
 a) run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
 
@@ -291,7 +291,7 @@ b) Re-run find_pls.r with the optimum number of PLS components. Be sure to modif
 		# Define the columns for the free (i.e. non-fixed) parameters
 		p<-c(2,3,4,5)
 
-Observed and simulated summary statistics can then be transformed into PLS components via defining such a parameter file (let's name it as transformPLS.input):
+Observed and simulated summary statistics can then be transformed into PLS components via defining such a parameter file (let's name this as transformPLS.input):
   
 	task	transform
 	linearComb  PLSdef.txt
@@ -365,9 +365,6 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 	//	Specifies the columns containing the parameters of interest in the file containing the summary statistics of the simulated data, i.e. its assigned values are numbers indicating the position of the respective columns in the file.
 	params 2-3
 
-	//	Specify the output file prefix
-	outputPrefix ABC_estimation_2pop_simpleModel_
-
 	//	Rejection settings
 
 	//	Specifies the number of simulations in the file containing the summary statistics of the simulated data to be taken into account.
@@ -400,21 +397,24 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 
 	//	Should you wish to estimate joint posteriors
 	jointPosteriors log_M_12,log_M_21
-	// While we don't need the output of jointPosteriorDensityPoints since we're outputting the jointSamplesMCMC, this nonetheless needs to be set to a minimum of 2!
+	//	Assuming grid sampling; the number of points (density) along each dimension (parameter). In case of using jointSamplesMCMC, this nonetheless needs to be set to a minimum of 2.
 	jointPosteriorDensityPoints 33
 
-	// For reference see: https://bitbucket.org/wegmannlab/abctoolbox/src/master/
+	// 	Should you wish to MCMC sample. For reference see: https://bitbucket.org/wegmannlab/abctoolbox/src/master/
 	//jointSamplesMCMC 10000
 	//sampleMCMCStart jointmode
 	//sampleMCMCBurnin 100
-	// You'll want to achieve an acceptance rate of circa 0.33 in an MCMC (check the log file for acceptance rate figures). The sampleMCMCRangeProp parameter allows you to tweak this (the higher the sampleMCMCRangeProp, the lower the acceptance rate)
+	//	You'll want to achieve an acceptance rate of circa 0.33 in an MCMC (check the log file for acceptance rate figures). The sampleMCMCRangeProp parameter allows you to tweak this (the higher the sampleMCMCRangeProp, the lower the acceptance rate)
 	//sampleMCMCRangeProp 2
 	//sampleMCMCSampling 5
 
 	//	For cross-validation of parameter estimates. The pseudo-observed data can either be chosen among the retained simulations (retainedValidation) or among all simulations (randomValidation). The number of simulations to be used as pseudo-observed data is assigned to either one of the argument-tags.
 	//randomValidation 1000
-
-	//output settings
+	
+	//	Specify the output file prefix
+	outputPrefix ABC_estimation_2pop_simpleModel_
+	
+	//	Specify output log file name
 	logFile ABC_estimation_2pop_simpleModel.log
 
 	verbose
@@ -462,7 +462,6 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 	  # Normalise and plot product of densities
 	  prod[,p] <- prod[,p] - max(prod[,p]);
 	  prod[,p] <- exp(prod[,p])
-
 	}
 
 	# Get values at peaks of product of probability densities (values)
@@ -497,7 +496,7 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 	print(combined_estimate)
 
 #  vii) Calculate deviation from neutral expectations
-  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be performed via lsd_scan.R. Note that modifications to the script (reflecting defined paths and file naming scheme) is required.
+  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be performed via lsd_scan.R. Note that modifications to the script (reflecting defined paths and file naming scheme) are required.
 
 #  viii) Visualise results	
   To visualise the results, we can generate a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci. This can be genearated via lsd_blotter.R.
