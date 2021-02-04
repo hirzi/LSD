@@ -11,7 +11,7 @@
 
   We note that LSD is NOT a program, rather it is an analytical framework for identifying loci under selection via deviations in demographic parameters. As such, it is not constrained to any particular program. Rather, we envision a custom and modular implementation that may interface with any appropriate combination of coalescent simulator, summary statistics calculator and ABC program. Here, we simply propose an example implementation utilising msms, LSD-High/Low and ABCtoolbox. As currently implemented, LSD takes whole genome sequence (WGS) data and conditions the inference of selection on genomic windows (regions).
 
-<img src="https://github.com/hirzi/LSD/blob/master/ABC_demography_pipeline_general_landscape3.png" width="800"> 
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/ABC_demography_pipeline_general_landscape3.png" width="800"> 
 
 # Requirements for LSD
 
@@ -266,7 +266,7 @@ To account for potential correlation between summary statistics and to retain on
 
 a) run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
 
-<img src="https://github.com/hirzi/LSD/blob/master/PLS_example.png" width="400">
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/PLS_example.png" width="400">
 
 b) Re-run find_pls.r with the optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
 
@@ -300,7 +300,7 @@ Before advancing to parameter estimation, we should first make sure that our sim
 
 To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap. 
 
-<img src="https://github.com/hirzi/LSD/blob/master/Sims_vs_Obs_examplePlot.png" width="500">
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/Sims_vs_Obs_examplePlot.png" width="500">
 
 	# Import libraries
 	library(ggplot2)
@@ -417,7 +417,7 @@ Once we have defined this parameter file (let's call this file ABCEstimate.input
 #  vi) Estimate neutral demographic parameters
   As LSD first requires an estimate of neutral demographic parameters, this must first be estimated. Following parameter estimation for the putative neutral regions (or the genome-wide representation), we combine the neutral window posterior density distributions to inform of the global (neutral) parameter estimates.
 
-<img src="https://github.com/hirzi/LSD/blob/master/Combine_posteriors_github.png" width="625">
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/Combine_posteriors_github.png" width="625">
 
 To acquire an estimate of the neutral (global) posteriors, we run can do as follows, taking the output of the previous step (v).
 
@@ -495,11 +495,11 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
   
 Example single chromosome plot:
 
-<img src="https://github.com/hirzi/LSD/blob/master/SingleChrManhattanPlot_example.png" width="1000"> 
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/SingleChrManhattanPlot_example.png" width="1000"> 
 
 Example whole-genome plot:
 
-<img src="https://github.com/hirzi/LSD/blob/master/MultiChrManhattanPlot_example.png" width="1000"> 
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/MultiChrManhattanPlot_example.png" width="1000"> 
 
 ===================================================================
 
