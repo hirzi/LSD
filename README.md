@@ -286,8 +286,8 @@ Observed and simulated summary statistics can then be transformed into PLS compo
   
 	task	transform
 	linearComb  PLSdef.txt
-	input	raw_sumstats.txt
-	output	PLStranformed_sumstats.txt
+	input	2pop_simpleModel_4params_simulatedSumStats
+	output	2pop_simpleModel_4params_PLStranformed_simulatedSumStats.txt
 	boxcox
 	numLinearComb	5
 
