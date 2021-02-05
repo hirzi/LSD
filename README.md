@@ -15,7 +15,7 @@
 
 # Requirements for LSD
 
-  Firstly, a demographic model needs to be defined. Definition and choice of the demographic model should i) be informed by knowledge of the study system, ii) be motivated by the model’s capacity to provide a useful approximation of a biological process of interest, and iii) be sufficiently simple to remain computationally tractable. Additionally, given that we condition the inference of selection on demographic parameters, the model should be formulated according to whether deviation in N<sub>E</sub> or M<sub>E</sub> is desired for the inference of selection. Finally, the model should be able to sufficiently describe the neutral genetic variation of the system. This can be validated by demonstrating that the observed data can be accurately and sufficiently captured by the simulated data (e.g. in terms of summary statistics)
+  Firstly, a demographic model needs to be defined. Definition and choice of the demographic model should i) be informed by knowledge of the study system, ii) be motivated by the model’s capacity to provide a useful approximation of a biological process of interest, and iii) be sufficiently simple to remain computationally tractable. Additionally, given that we condition the inference of selection on demographic parameters, the model should be formulated according to whether deviation in N<sub>E</sub> or M<sub>E</sub> is desired for the inference of selection. Finally, the model should be able to sufficiently describe the neutral genetic variation of the system. This can be validated by demonstrating that the observed data can be accurately and sufficiently captured by the simulated data (e.g. in terms of summary statistics).
 
   To estimate neutral demographic parameters in the first step, we need an a priori set of regions that we believe reflect neutral evolution. Such a set may be informed by the particular structural or functional class the sites belong to and may e.g. consist of genomic regions not linked to structural annotations. Alternatively, given that LSD is very robust to mis-specification of the neutral set, we may rely on the whole genome or a random subset of the genome to reflect neutral diversity.
   
@@ -41,9 +41,15 @@ Other programs that may be needed include SAMtools (http://www.htslib.org/downlo
 
 # Instructions
 
-Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
+#  i) Define model
 
-#  i) Calculate summary statistics for observed data
+The first step in LSD is to formulate a demographic model and conceptualize on which demographic parameters to condition the inference of selection on, based on theory and biological knowledge of the system under investigation (see **Requirements for LSD**). For multi-population and more complex systems, thjs may entail the process of model selection, where competing models are evaluated and compared. This can be performed under the same ABC framework as LSD (see: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Model%20Choice) or alternatively performed *a priori* or independently via e.g. dadi (Gutenkunst et al. 2009), Moments (Jouganous et al. 2017), fastsimcoal2 (Excoffier et al. 2013) or other demographic inference programs.
+
+One may even consider the possibility of modelling the same system in different ways, to acquire inferences of different biological processes. For instance, assume we have a system comprising two contrasting environments of 3 populations each, and that populations within the same environment are more closely related to each other than they are between environments. Such a system may be modelled completely (i.e. with all populations represented in the demographic model) via a island-continent model, with the 3 populations structured as 'islands' connected via migration to meta-population 'continents' (that reflect the distinct environments), and reciprocal migration between continents. Conditioning the inference of selection on deviations in between-continent effective migration rates is informative on signals between environments, and would detect common loci underlying adaptation to the environments. Alternatively, we may choose to focus on local adapatation specific to a pair. In this case, we may simply model a 2-population IM model comprising a sub-set pair of populations, assuming of course that this simple model can capture the observed data (of the pair) accurately and sufficiently. 
+
+Once we have defined a model, we prepare the data needed for the LSD scan. Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
+
+#  ii) Calculate summary statistics for observed data
 Mapped sequenced data are generally held in BAM format. We thus assume this to be the starting point for most users. LSD however requires as input mpileup format files. To convert BAM to mpileup format:
 
 	samtools mpileup prefix.bam > prefix.mpileup
@@ -70,7 +76,7 @@ For more information on the available options, you can run:
 
 To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify lsd_low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file (NEED TO UPDATE).
 
-#  ii) Generate simulated data
+#  iii) Generate simulated data
 
    a) Generating coalescent simulations
    
@@ -270,7 +276,7 @@ Once we have defined these input (let's call this ABCSampler.input) and priors f
 
 	ABCtoolbox ABCSampler.input
 
-#  iii) Remove correlation between summary statistics
+#  iv) Remove correlation between summary statistics
 To account for potential correlation between summary statistics and retain only their informative components, we apply a Partial Least Squares (PLS) transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, our strategy is two run this in two steps: 
 
 a) Run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
@@ -304,7 +310,7 @@ And running:
 	
 	ABCtoolbox transformPLS.input
 
-#  iv) Validation of simulations
+#  v) Validation of simulations
 Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the observed data. 
 
 To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap. 
@@ -341,7 +347,7 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 	grid.arrange(grobs = plot_list, ncol=3, top = "Overlap of simulated & observed PLS-transformed summary statistics")
 
 
-#  v) ABC parameter estimation
+#  vi) ABC parameter estimation
   Perform demographic parameter estimation via ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/estimation/parameter_estimation. In our example, we seek to obtain the joint posterior of reciprocal migration rates between the 2 populations. The ABCtoolbox parameter file should reflect this accordingly.
 
 	//----------------------------------------------------------------------
@@ -423,7 +429,7 @@ Once we have defined this parameter file (let's call this file ABCEstimate.input
 
 	ABCtoolbox ABCEstimate.input
 
-#  vi) Estimate neutral demographic parameters
+#  vii) Estimate neutral demographic parameters
   As LSD first requires an estimate of neutral demographic parameters, this must first be estimated. Following parameter estimation for the putative neutral regions (or the genome-wide representation), we combine the neutral window posterior density distributions to inform of the global (neutral) parameter estimates.
 
 <img src="https://github.com/hirzi/LSD/blob/master/Example figures/Combine_posteriors_github.png" width="625">
@@ -495,10 +501,10 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 	# Print result
 	print(combined_estimate)
 
-#  vii) Calculate deviation from neutral expectations
+#  viii) Calculate deviation from neutral expectations
   Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be performed via lsd_scan.R. Note that modifications to the script (reflecting defined paths and file naming scheme) are required.
 
-#  viii) Visualise results	
+#  ix) Visualise results	
   To visualise the results, we can generate a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci. This can be genearated via lsd_blotter.R.
   
 Example single chromosome plot:
