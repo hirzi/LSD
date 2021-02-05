@@ -147,7 +147,7 @@ We can then explore which theoretical distribution best captures this observed c
 	summary(pop_data_filtered_nbinom)
 	# This summary contains the moments of the distribution (e.g. mean and s.d. for normal distributions; mean and size (dispersal) for negative binomial distributions). 
 
-We specify the moments of the fitted distribution to a file; with columns representing individuals or pooled populations, the first row representing the mean of the distribution and the second row the standard deviation or dispersal. Note that sequencing data is typically best fit by a negative binomial distribution.
+We specify the moments of the fitted distribution to a file; with columns representing populations (currently in LSD-High, we assume a common coverage distribution for a population; *this needs to be updated to accommodate individual coverage distributions*), the first row representing the mean of the distribution and the second row the standard deviation or dispersal. Note that sequencing data is typically best fit by a negative binomial distribution.
 
 For more information on the available options for LSD-High, you can run:
 
