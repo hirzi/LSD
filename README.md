@@ -43,9 +43,9 @@ Other programs that may be needed include SAMtools (http://www.htslib.org/downlo
 
 #  i) Define model
 
-The first step in LSD is to formulate a demographic model and conceptualise on which demographic parameters to condition the inference of selection on, based on theory and biological knowledge of the system under investigation (see: **Requirements for LSD**). For multi-population and more complex systems, thjs may entail the process of model selection, where competing models are evaluated and compared. This can be performed under the same ABC framework as LSD (see: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Model%20Choice) or alternatively performed *a priori* or independently via e.g. dadi (Gutenkunst et al. 2009), Moments (Jouganous et al. 2017), fastsimcoal2 (Excoffier et al. 2013) or other demographic inference programs.
+The first step in LSD is to formulate a demographic model and conceptualise on which demographic parameters to condition the inference of selection on, based on theory and biological knowledge of the system under investigation (see: **Requirements for LSD**). For multi-population and more complex systems, this may entail the process of model selection, where competing models are evaluated and compared. This can be performed under the same ABC framework as LSD (see: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Model%20Choice) or alternatively performed *a priori* or independently via e.g. dadi (Gutenkunst et al. 2009), Moments (Jouganous et al. 2017), fastsimcoal2 (Excoffier et al. 2013) or other demographic inference programs.
 
-One may even consider the possibility of modelling the same system in different ways, to acquire inferences of different biological processes. For instance, assume we have a system comprising two contrasting environments of 3 populations each, and that populations within the same environment are more closely related to each other than they are between environments. Such a system may be modelled completely (i.e. with all populations represented in the demographic model) via a island-continent model, with the 3 populations structured as 'islands' connected via migration to meta-population 'continents' (that reflect the distinct environments), and reciprocal migration between continents. Conditioning the inference of selection on deviations in between-continent effective migration rates is informative on signals between environments, and would detect common loci underlying adaptation to the environments. Alternatively, we may choose to focus on local adapatation specific to a pair. In this case, we may simply model a 2-population IM model comprising a sub-set pair of populations, assuming of course that this simple model can capture the observed data (of the pair) accurately and sufficiently (see: **v) Validation of simulations**). 
+One may even consider the possibility of modelling the same system in different ways, to acquire inferences of different biological processes. For instance, assume we have a system comprising two contrasting environments of 3 populations each, and that populations within the same environment are more closely related to each other than they are between environments. Such a system may be modelled completely (i.e. with all populations represented in the demographic model) via an island-continent model, with the 3 populations structured as 'islands' connected via migration to meta-population 'continents' (that reflect the distinct environments), and reciprocal migration between continents. Conditioning the inference of selection on deviations in between-continent effective migration rates is informative on signals between environments, and would detect common loci underlying adaptation to the environments. Alternatively, we may choose to focus on local adaptations specific to a pair. In this case, we may simply model a 2-population IM model comprising a sub-set pair of populations, assuming of course that this simple model can capture the observed data (of the pair) accurately and sufficiently (see: **v) Validation of simulations**). 
 
 Once we have defined a model, we prepare the data needed for the LSD scan. Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
 
@@ -159,7 +159,7 @@ If the observed data is of low-coverage (< 10x), it is better to work with genot
 
 c) Efficiently generating simulations with ABCtoolbox
 
-Steps ii.a) and ii.b), that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox confers the convenient ability to draw variable parameters (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
+Steps **ii.a)** and **ii.b)**, that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox confers the convenient ability to draw variable parameters (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
 
 Example input file for generating simulations with ABCtoolbox:
 
@@ -229,7 +229,7 @@ Example priors file for generating simulations with ABCtoolbox:
 
 	// #### Example 4 parameter, 2 population model ####
 
-	// msms command line in inut file:
+	// msms command line in input file:
 	//	simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
 
 	[PARAMETERS]
@@ -283,7 +283,7 @@ a) Run for # PLS components = # of summary statistics. find_pls.r will output a 
 
 <img src="https://github.com/hirzi/LSD/blob/master/Example figures/PLS_example.png" width="400">
 
-b) Here, the plot suggest that the data (multitude of summary statistics) can be sufficiently summarised by 5 PLS components. Re-run find_pls.r with this optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
+b) Here, the plot suggests that the data (multitude of summary statistics) can be sufficiently summarised by 5 PLS components. Re-run find_pls.r with this optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
 
 		# Define working directory
 		directory<-"/path/"
@@ -379,13 +379,13 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 	//	Specifies the number of simulations closest to the observed data to be selected from the simulations.
 	numRetained 2500
 
-	//	Calculates the tukey depth P-value. This calculates the Tukey depth (the minimum number of sample points on one side of a hyperplane through the point, i.e. a measure of how centered a point is in an overall cloud of points) of the observed data and contrasts it with the Tukey depth of the distribution of all retained simulation points (hence argument should be equal or less than numRetained), to produce a p-value. If the observed point is close to the center of the retained simulations, we expect that most 
+	//	Calculates the tukey depth P-value. This calculates the Tukey depth (the minimum number of sample points on one side of a hyperplane through the point, i.e. a measure of how centred a point is in an overall cloud of points) of the observed data and contrasts it with the Tukey depth of the distribution of all retained simulation points (hence argument should be equal or less than numRetained), to produce a p-value. If the observed point is close to the centre of the retained simulations, we expect that most 
 	//tukeyPValue 500
 
 	//	Calculates the marginal density P-value. Similar in approach to the above, this tag calculates the P-value for the marginal density of the observed datapoint by doing so for the observed datapoint and the retained simulations (distribution)
 	//marDensPValue 500
 
-	//	If the parameter writeRetained is defined and set to 1, ABCestimator writes two files: one containing the parameter and statistics of the retained simulations and one with the smoothed parameter distribution of the retained simula- tions (see
+	//	If the parameter writeRetained is defined and set to 1, ABCestimator writes two files: one containing the parameter and statistics of the retained simulations and one with the smoothed parameter distribution of the retained simulations
 	writeRetained 1
 
 	//	To remove highly correlated statistics
@@ -505,7 +505,7 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
   Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be performed via lsd_scan.R. Note that modifications to the script (reflecting defined paths and file naming scheme) are required.
 
 #  ix) Visualise results	
-  To visualise the results, we can generate a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci. This can be genearated via lsd_blotter.R.
+  To visualise the results, we can generate a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci. This can be generated via lsd_blotter.R.
   
 Example single chromosome plot:
 
