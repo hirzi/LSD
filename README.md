@@ -21,7 +21,7 @@
   
   LSD, as currently implemented (based on ABC), is computationally demanding and requires a fair amount of computing resources. This currently limits its use to those with access to computer clusters. 
 
-===================================================================
+
 
 # Installation
 
@@ -37,11 +37,11 @@ LSD accessory scripts are coded in Python 3 (https://www.python.org/downloads/) 
 
 Other programs that may be needed include SAMtools (http://www.htslib.org/download/) for manipulating observed data (SAM/BAM files) and ANGSD (http://www.popgen.dk/angsd/index.php/Installation) for handling low-coverage data (via genotype likelihoods) in LSD-Low.
 
-===================================================================
+
 
 # Instructions
 
-#  i) Define model
+##  i) Define model
 
 The first step in LSD is to formulate a demographic model and conceptualise on which demographic parameters to condition the inference of selection on, based on theory and biological knowledge of the system under investigation (see: **Requirements for LSD**). For multi-population and more complex systems, this may entail the process of model selection, where competing models are evaluated and compared. This can be performed under the same ABC framework as LSD (see: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Model%20Choice) or alternatively performed *a priori* or independently via e.g. dadi (Gutenkunst et al. 2009), Moments (Jouganous et al. 2017), fastsimcoal2 (Excoffier et al. 2013) or other demographic inference programs.
 
@@ -49,7 +49,7 @@ One may even consider the possibility of modelling the same system in different 
 
 Once we have defined a model, we prepare the data needed for the LSD scan. Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
 
-#  ii) Calculate summary statistics for observed data
+##  ii) Calculate summary statistics for observed data
 Mapped sequenced data are generally held in BAM format. We thus assume this to be the starting point for most users. LSD however requires as input mpileup format files. To convert BAM to mpileup format:
 
 	samtools mpileup prefix.bam > prefix.mpileup
@@ -76,7 +76,7 @@ For more information on the available options, you can run:
 
 To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify lsd_low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file (NEED TO UPDATE).
 
-#  iii) Generate simulated data
+##  iii) Generate simulated data
 
    a) Generating coalescent simulations
    
@@ -276,7 +276,7 @@ Once we have defined these input (let's call this ABCSampler.input) and priors f
 
 	ABCtoolbox ABCSampler.input
 
-#  iv) Remove correlation between summary statistics
+##  iv) Remove correlation between summary statistics
 To account for potential correlation between summary statistics and retain only their informative components, we apply a Partial Least Squares (PLS) transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, our strategy is two run this in two steps: 
 
 a) Run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
@@ -310,7 +310,7 @@ And running:
 	
 	ABCtoolbox transformPLS.input
 
-#  v) Validation of simulations
+##  v) Validation of simulations
 Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the observed data. 
 
 To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap. 
@@ -347,7 +347,7 @@ To do this, we can simply plot the simulated and observed summary statistics in 
 	grid.arrange(grobs = plot_list, ncol=3, top = "Overlap of simulated & observed PLS-transformed summary statistics")
 
 
-#  vi) ABC parameter estimation
+##  vi) ABC parameter estimation
   Perform demographic parameter estimation via ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/estimation/parameter_estimation. In our example, we seek to obtain the joint posterior of reciprocal migration rates between the 2 populations. The ABCtoolbox parameter file should reflect this accordingly.
 
 	//----------------------------------------------------------------------
@@ -429,7 +429,7 @@ Once we have defined this parameter file (let's call this file ABCEstimate.input
 
 	ABCtoolbox ABCEstimate.input
 
-#  vii) Estimate neutral demographic parameters
+##  vii) Estimate neutral demographic parameters
   As LSD first requires an estimate of neutral demographic parameters, this must first be estimated. Following parameter estimation for the putative neutral regions (or the genome-wide representation), we combine the neutral window posterior density distributions to inform of the global (neutral) parameter estimates.
 
 <img src="https://github.com/hirzi/LSD/blob/master/Example figures/Combine_posteriors_github.png" width="625">
@@ -501,10 +501,10 @@ To acquire an estimate of the neutral (global) posteriors, we run can do as foll
 	# Print result
 	print(combined_estimate)
 
-#  viii) Calculate deviation from neutral expectations
+##  viii) Calculate deviation from neutral expectations
   Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be performed via lsd_scan.R. Note that modifications to the script (reflecting defined paths and file naming scheme) are required.
 
-#  ix) Visualise results	
+##  ix) Visualise results	
   To visualise the results, we can generate a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci. This can be generated via lsd_blotter.R.
   
 Example single chromosome plot:
