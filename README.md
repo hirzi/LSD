@@ -279,11 +279,11 @@ Once we have defined these input (let's call this ABCSampler.input) and priors f
 ##  iv) Remove correlation between summary statistics
 To account for potential correlation between summary statistics and retain only their informative components, we apply a Partial Least Squares (PLS) transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, our strategy is two run this in two steps: 
 
-a) Run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
+**a)** Run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
 
 <img src="https://github.com/hirzi/LSD/blob/master/Example figures/PLS_example.png" width="400">
 
-b) Here, the plot suggests that the data (multitude of summary statistics) can be sufficiently summarised by 5 PLS components. Re-run find_pls.r with this optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
+**b)** Here, the plot suggests that the data (multitude of summary statistics) can be sufficiently summarised by 5 PLS components. Re-run find_pls.r with this optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
 
 		# Define working directory
 		directory<-"/path/"
