@@ -78,7 +78,7 @@ To calculate observed summary statistics under low-coverage, we use ANGSD. A con
 
 ##  iii) Generate simulated data
 
-   ###	a) Generating coalescent simulations
+   ####	a) Generating coalescent simulations
    
    We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals. The msms command line to generate coalescent samples for this demographic model would be:  
 	
@@ -92,7 +92,7 @@ If parameters are not known with confidence, as will usually be the case with em
 	
 To explore parameter space (for parameter estimation), we want these variables to be drawn from large, prior ranges. We will do this by embedding the msms command, as well as the following LSD-High command, in ABCtoolbox. 
 
-   ###	b) Calculating simulated summary statistics
+   ####	b) Calculating simulated summary statistics
    	
    To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Similar to msms, LSD-High assumes haploid sample numbers. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
 	
