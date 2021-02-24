@@ -78,7 +78,7 @@ To calculate observed summary statistics under low-coverage, we use ANGSD. A con
 
 ##  iii) Generate simulated data
 
-   ####	a) Generating coalescent simulations
+   ###	a) Generating coalescent simulations
    
    We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals. The msms command line to generate coalescent samples for this demographic model would be:  
 	
@@ -92,7 +92,7 @@ If parameters are not known with confidence, as will usually be the case with em
 	
 To explore parameter space (for parameter estimation), we want these variables to be drawn from large, prior ranges. We will do this by embedding the msms command, as well as the following LSD-High command, in ABCtoolbox. 
 
-   ####	b) Calculating simulated summary statistics
+   ###	b) Calculating simulated summary statistics
    	
    To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Similar to msms, LSD-High assumes haploid sample numbers. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
 	
@@ -157,7 +157,7 @@ If the observed data is of low-coverage (< 10x), it is better to work with genot
 
 	lsd_low.sh -f msms_output -p 20,20 -l 5000 -d 5 -e 0.001 -r ref.fai -w working_dir -o output 2>&1 | tee -a log.file
 
-####	c) Efficiently generating simulations with ABCtoolbox
+###	c) Efficiently generating simulations with ABCtoolbox
 
 Steps **ii.a)** and **ii.b)**, that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox confers the convenient ability to draw variable parameters (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
 
