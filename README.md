@@ -157,7 +157,7 @@ If the observed data is of low-coverage (< 10x), it is better to work with genot
 
 	lsd_low.sh -f msms_output -p 20,20 -l 5000 -d 5 -e 0.001 -r ref.fai -w working_dir -o output 2>&1 | tee -a log.file
 
-c) Efficiently generating simulations with ABCtoolbox
+####	c) Efficiently generating simulations with ABCtoolbox
 
 Steps **ii.a)** and **ii.b)**, that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox confers the convenient ability to draw variable parameters (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
 
