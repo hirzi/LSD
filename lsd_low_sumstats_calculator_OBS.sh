@@ -1,9 +1,9 @@
 #!/bin/bash
 
-##### This is a bash-based msToGLF and ANGSD wrapper that simulates genotype likelihoods and calculates summary statistics from msms output. It has been written to be compatible with ABCtoolbox.
-##### Hirzi Luqman, 11.03.2019
-##### Example usage: ./lsd_low.sh -f neutral_demo_simpleModel_11params_RECON2.out -p 20,20,20,20,20,20 -l 5000 -d 2 -e 0.01 -r ${REF_index} -w ${working_dir} -o results.concatenated
-##### Recall, -p takes diploid sample size (not haploid!)
+##### This is a bash-based ANGSD wrapper that calculates summary statistics from bam files. It has been written to be compatible with the ioutput of lsd_low.sh.
+##### Seth Musker 07.06.2021 (adapted from lsd_low.sh by Hirzi Luqman, 11.03.2019)
+##### Example usage: ./lsd_low_sumstats_calculator_OBS.sh -f bamlist.txt -p 12,6 -r ${REF_index} -R ${REF_fasta} -w ${working_dir} -o myoutput_prefix -t 40 -m 10,5 -q 20
+##### Recall, -p takes diploid sample size (not haploid!). make sure -p argument follows order of individuals in bamlist!
 
 ##### For reference, see:
 #http://popgen.dk/angsd/index.php/MsToGlf
@@ -11,30 +11,27 @@
 #https://github.com/mfumagalli/Tjarno/blob/master/Files/selection_2.md
 
 
-##### Load required modules
-module load gcc/4.9.2 gdc angsd/0.925
-
-
 ##### Parse input arguments
-while getopts f:p:l:d:e:r:w:o: option
+while getopts f:p:r:R:w:o:t:m:q: option
 do
 case "${option}"
 in
-f) ms_file=${OPTARG};;
+f) bamlist=${OPTARG};;
 p) pop_info=${OPTARG};;
-l) sequence_length=${OPTARG};;
-d) depth=$OPTARG;;
-e) error_rate=$OPTARG;;
 r) REF_index=$OPTARG;;
+R) REF_fasta=$OPTARG;;
 w) working_dir=$OPTARG;;
 o) output_name=$OPTARG;;
+t) threads=$OPTARG;;
+m) min_ind=$OPTARG;;
+q) min_mapQ=$OPTARG;;
 esac
 done
 
 
 ##### Process input variables 
 # Name prefix
-prefix=$(basename "$ms_file")
+prefix=$output_name
 # Split input population string into population array (https://stackoverflow.com/questions/10586153/split-string-into-an-array-in-bash)
 IFS=', ' read -r -a pop_array <<< "$pop_info"
 # Count number of total individuals, aka sum of array (https://stackoverflow.com/questions/13635293/unix-shell-script-adding-the-elements-of-an-array-together)
@@ -45,17 +42,21 @@ done
 # Number of populations, aka length of array
 no_pops=${#pop_array[@]}
 
+## Process minInd per pop
+IFS=', ' read -r -a minind_array <<< "$min_ind"
+
 # Print input (verbose)
-echo "Input file:" $ms_file
-echo "Reference index is given at:" $REF_index
-echo "The working directory is given as:" $working_dir
+echo "Input file:" $bamlist
 echo "The final output file will be named:" $output_name
+echo "Reference index is given at:" $REF_index
+echo "Reference fasta is given at:" $REF_fasta
+echo "The working directory is given as:" $working_dir
 echo "Population array:" $pop_info
-echo "Simulated sequence length:" $sequence_length"bp"
-echo "Simulated depth:" $depth"X"
-echo "Simulated error rate:" $error_rate
 echo "Total number of individuals:" $no_inds_total
 echo "Total number of populations:" $no_pops
+echo "Using # threads:" $threads
+echo "Requiring at least N inds:" $min_ind
+echo "Requiring minimum mapQ:" $min_mapQ
 
 
 ##### Generate a list of populations, and of all population pairs.
@@ -79,61 +80,37 @@ fi
 # Number of population pairs
 num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 
-
-##### Generate null output template, in the case of a null (zero segsites) or invalid (segsites > sequence length) msms output
-if [ ! -f ${working_dir}/null.headers ]; then
-	for pop in $(seq 1 ${no_pops}); do
-		# To add suffix after each word, see: https://stackoverflow.com/questions/28984295/add-comma-after-each-word
-		echo -e "tW"'\t'"tP"'\t'"tF"'\t'"tH"'\t'"tL"'\t'"Tajima"'\t'"fuf"'\t'"fud"'\t'"fayh"'\t'"zeng" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.thetas
-		echo -e "singletons"'\t'"doubletons" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.sfs
-	done
-	paste ${working_dir}/pop*.null_headers.thetas > ${working_dir}/null_headers.thetas
-	paste ${working_dir}/pop*.null_headers.sfs > ${working_dir}/null_headers.sfs
-
-	for pop in $(seq 1 ${num_pairs}); do
-		pop_pair=`sed -n ${pop}p < ${working_dir}/pop_name_pairs`
-		# Remember, set allows you to define the elements of your list as variables, according to their order
-		set -- $pop_pair
-		# Print headers
-		echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.null_headers.fst
-	done
-	paste ${working_dir}/pop*.pop*.null_headers.fst > ${working_dir}/null_headers.fst
-	# Concatenate all headers
-	paste ${working_dir}/null_headers.thetas ${working_dir}/null_headers.sfs ${working_dir}/null_headers.fst > ${working_dir}/null.headers
-	# Remove temporary files
-	rm pop*.null_headers.* null_headers.*
-fi
-# Number of headers
-num_headers=$(cat ${working_dir}/null.headers | awk '{print NF}')
+# null header stuff, don't think it's needed
+# ##### Generate null output template, in the case of a null (zero segsites) or invalid (segsites > sequence length) msms output
+# #if [ ! -f ${working_dir}/null.headers ]; then
+# for pop in $(seq 1 ${no_pops}); do
+# # To add suffix after each word, see: https://stackoverflow.com/questions/28984295/add-comma-after-each-word
+# echo -e "tW"'\t'"tP"'\t'"tF"'\t'"tH"'\t'"tL"'\t'"Tajima"'\t'"fuf"'\t'"fud"'\t'"fayh"'\t'"zeng" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.thetas
+# echo -e "singletons"'\t'"doubletons" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.sfs
+# done
+# paste ${working_dir}/pop*.null_headers.thetas > ${working_dir}/null_headers.thetas
+# paste ${working_dir}/pop*.null_headers.sfs > ${working_dir}/null_headers.sfs
+# 
+# for pop in $(seq 1 ${num_pairs}); do
+# pop_pair=`sed -n ${pop}p < ${working_dir}/pop_name_pairs`
+# # Remember, set allows you to define the elements of your list as variables, according to their order
+# set -- $pop_pair
+# # Print headers
+# echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.null_headers.fst
+# done
+# paste ${working_dir}/pop*.pop*.null_headers.fst > ${working_dir}/null_headers.fst
+# # Concatenate all headers
+# paste ${working_dir}/null_headers.thetas ${working_dir}/null_headers.sfs ${working_dir}/null_headers.fst > ${working_dir}/null.headers
+# # Remove temporary files
+# rm pop*.null_headers.* null_headers.*
+#   fi
+# # Number of headers
+# #num_headers=$(cat ${working_dir}/null.headers | awk '{print NF}')
 
 
 ##### MAIN FUNCTION #####
-## Condition flow control and output according to whether msms output contains non-zero segsites and comprises number of segsites < sequence length. If not, write out null output files.
-# If the msms output has no segsites, then it will have less than 5 lines.
-nosegsites_linecount_threshold=5
-len_msout=$(cat ${working_dir}/${ms_file} | wc -l)
-num_segsites=$(cat ${working_dir}/${ms_file} | sed -n 5p | awk '{print $2}')
 
-# If the msms output has no segsites, then it will have less than 5 lines. We generate an all zeroes output in this case.
-if [ "$len_msout" -lt "$nosegsites_linecount_threshold" ]; then
-	echo "msms simulation produced zero segregating sites - generating null output file (all 0s)"
-	cat ${working_dir}/null.headers > ${working_dir}/${output_name}
-	printf '0\t%.0s' $(seq ${num_headers}) >> ${working_dir}/${output_name}
-
-# If the msms output has segsites > sequence length, the result is invalid (and can't be read by msToGlf). Here, the output is given all 999999 (i.e. we designate this as the NA value, which we can remove/filter out later)
-elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites" -ge "$sequence_length" ]; then
-	echo "msms simulation produced invalid number of segregating sites (more segregating sites than designated sequence length) - generating null output file (all NAs/999999s)"
-	cat ${working_dir}/null.headers > ${working_dir}/${output_name}
-	printf '999999\t%.0s' $(seq ${num_headers}) >> ${working_dir}/${output_name}
-
-# If the msms output has non-zero segsites, and has segsites < sequence_length, we proceed as follows:
-elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites" -lt "$sequence_length" ]; then
-	echo "msms simulation produced non-zero and valid number of segregating sites - proceeding with analysis..."
-	
-	##### Simulate genotype likelihoods (msToGLF)
-	# Simulate genotype likelihoods from msms output via msToGlf defining error rate, sequencing depth (you can also supply a depthFile filename if you want to force a different mean depth between individuals), number of diploid individuals, and sequence length (simulating invariant sites). Outputting a single replicate from same scenario (-singleOut 1)
-	echo "Simulating genotype likelihoods with error rate of" $error_rate "and depth of" $depth"X; also simulating invariant sites assuming sequence length of" $sequence_length"bp"
-	msToGlf -in ${working_dir}/${ms_file} -out ${working_dir}/${prefix}.gl -err ${error_rate} -depth ${depth} -nind ${no_inds_total} -singleOut 1 -regLen ${sequence_length}
+## calculate genotype likelihoods, output in binary format (doGlf 1)
 
 	##### Calculate single population summary statistics (ANGSD)
 	end=0
@@ -144,19 +121,23 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 		start=$(( ${end} - ${pop_array[${pop}-1]} + 1 ))
 		no_inds_per_pop="${pop_array[${pop}-1]}"
 		echo "Population" $pop "- starting individual:" $start "; ending individual:" $end "; population size:" $no_inds_per_pop
+		let "min_ind_pop=${minind_array[${pop}-1]}"
+		echo "Requiring genotypes from at least " $min_ind_pop " individuals"
 		# Extract populations from GLF file (by number of individuals per population)
-		splitgl ${working_dir}/${prefix}.gl.glf.gz ${no_inds_total} ${start} ${end} > ${working_dir}/pop${pop}.glf.gz
+		#splitgl ${working_dir}/${prefix}.gl.glf.gz ${no_inds_total} ${start} ${end} > ${working_dir}/pop${pop}.glf.gz
+		## make separate bamlist file for each pop
+		tail -n+${start} ${bamlist} | head -n ${end} > ${working_dir}/pop${pop}.bamlist.txt
 		# Calculate the site allele frequency likelihoods (doSaf)
 		echo "Calculating SAF for population" $pop
-		angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -isSim 1 -P 1 -fai ${REF_index} -out ${working_dir}/pop${pop}
-		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -isSim 1 -P 1 -fai ${REF_index} -out ${working_dir}/pop${pop}
+		angsd -doSaf 1 -bam ${working_dir}/pop${pop}.bamlist.txt -GL 1 -uniqueOnly 1 -baq 1 -minMapQ ${min_mapQ} -minInd ${min_ind_pop} -doCheck 0 -P ${threads} -fai ${REF_index} -anc ${REF_fasta} -ref ${REF_fasta} -out ${working_dir}/pop${pop}
+		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -P ${threads} -fai ${REF_index} -out ${working_dir}/pop${pop}
 		# Calculate the SFS (for use as prior in calculation of thetas)
 		echo "Calculating SFS for population" $pop
-		realSFS ${working_dir}/pop${pop}.saf.idx -P 1 > ${working_dir}/pop${pop}.sfs
+		realSFS ${working_dir}/pop${pop}.saf.idx -P ${threads} -fold 1 > ${working_dir}/pop${pop}.sfs
 		# Calculate the site allele frequency likelihoods (doSaf)
 		echo "Calculating thetas for population" $pop	
-		angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
-		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
+		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
+		realSFS saf2theta ${working_dir}/pop${pop}.saf.idx -P ${threads} -fold 1 -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop}
 		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx
 	done
 	echo "All populations' thetas calculated!"
@@ -171,7 +152,7 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 		set -- $pop_pair
 		# Calculate the 2DSFS prior
 		echo "Calculating 2D SFS for population pair" $pop_pair	
-		realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P 1 > ${working_dir}/${1}.${2}.ml
+		realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P ${threads} -fold 1 > ${working_dir}/${1}.${2}.ml
 		# Calculate the FST
 		echo "Calculating FST for population pair" $pop_pair
 		realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1
@@ -240,21 +221,21 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 	paste ${working_dir}/pop*.pop*.globalFST > ${working_dir}/fst.results.concatenated
 
 	# Concatenate all results (make sure all fields are tab-separated)
-	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated > ${working_dir}/${output_name}
+	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated > ${working_dir}/${output_name}.txt
 	# Check that number of fields match between headers and results
 	#cat ${working_dir}/${output_name} | awk '{print NF}'
-	echo "GLF simulation and calculation of summary statistics has finished!"
+	echo "Calculation of summary statistics has finished!"
 
 
 	##### Remove temporary and intermediate files
 	#rm
 
-# For all other cases (there shouldn't be any, but just in case), we output an all 999999 (NA) file.
-else
-	echo "msms simulation produced invalid number of segregating sites - generating null output file (all NAs/999999s)"
-	cat ${working_dir}/null.headers > ${working_dir}/${output_name}
-	printf '999999\t%.0s' $(seq ${num_headers}) >> ${working_dir}/${output_name}
-fi
+	# For all other cases (there shouldn't be any, but just in case), we output an all 999999 (NA) file.
+#else
+#	echo "msms simulation produced invalid number of segregating sites - generating null output file (all NAs/999999s)"
+#	cat ${working_dir}/null.headers > ${working_dir}/${output_name}
+#	printf '999999\t%.0s' $(seq ${num_headers}) >> ${working_dir}/${output_name}
+#fi
 
 ##### END OF MAIN FUNCTION #####
 
