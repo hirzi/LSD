@@ -129,7 +129,7 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		tail -n+${start} ${bamlist} | head -n ${end} > ${working_dir}/pop${pop}.bamlist.txt
 		# Calculate the site allele frequency likelihoods (doSaf)
 		echo "Calculating SAF for population" $pop
-		angsd -doSaf 1 -bam ${working_dir}/pop${pop}.bamlist.txt -GL 1 -uniqueOnly 1 -baq 1 -minMapQ ${min_mapQ} -minInd ${min_ind_pop} -doCheck 0 -P ${threads} -fai ${REF_index} -anc ${REF_fasta} -ref ${REF_fasta} -out ${working_dir}/pop${pop}
+		angsd -doSaf 1 -bam ${working_dir}/pop${pop}.bamlist.txt -GL 1 -uniqueOnly 1 -baq 1 -minMapQ ${min_mapQ} -minInd ${min_ind_pop} -doCheck 0 -P 2 -fai ${REF_index} -anc ${REF_fasta} -ref ${REF_fasta} -out ${working_dir}/pop${pop}
 		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -P ${threads} -fai ${REF_index} -out ${working_dir}/pop${pop}
 		# Calculate the SFS (for use as prior in calculation of thetas)
 		echo "Calculating SFS for population" $pop
