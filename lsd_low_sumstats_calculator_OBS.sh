@@ -107,10 +107,10 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		tail -n+${start} ${bamlist} | head -n ${end} > ${working_dir}/pop${pop}.bamlist.txt
 		# Calculate the site allele frequency likelihoods (doSaf)
 		getSaf () {
-			angsd -doSaf 1 -doCheck 0 -P 2 -bam ${working_dir}/pop${pop}.bamlist.txt \
+			angsd -doSaf 1 -doCheck 0 -doCounts 1 -P 2 -bam ${working_dir}/pop${pop}.bamlist.txt \
 				-GL 1 -uniqueOnly 1 -baq 1 -only_proper_pairs 1 \
 				-minMapQ ${min_mapQ} -setMaxDepth ${max_depth} -minInd ${min_ind_pop} -fai ${REF_index} -anc ${REF_fasta} -ref ${REF_fasta} \
-				-out ${working_dir}/${prefix}.pop${pop} &> /dev/null
+				-out ${working_dir}/${prefix}.pop${pop}
 		}
 		if [[ ${FORCE} -eq 1 ]]; then
 			echo "FORCE recalculating SAF for population " $pop " regardless of whether" ${working_dir}/${prefix}.pop${pop}.saf.idx "exists"
