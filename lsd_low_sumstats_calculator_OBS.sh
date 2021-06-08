@@ -2,29 +2,32 @@
 
 ##### This is a bash-based ANGSD wrapper that calculates summary statistics from bam files. It has been written to be compatible with the ioutput of lsd_low.sh.
 ##### Seth Musker 07.06.2021 (adapted from lsd_low.sh by Hirzi Luqman, 11.03.2019)
-##### Example usage: ./lsd_low_sumstats_calculator_OBS.sh -f bamlist.txt -p 12,6 -r ${REF_index} -R ${REF_fasta} -w ${working_dir} -o myoutput_prefix -t 40 -m 10,5 -q 20
+##### Example usage: ./lsd_low_sumstats_calculator_OBS.sh -f bamlist.txt -p 12,6 -r ${REF_index} -R ${REF_fasta} -w ${working_dir} -o myoutput_prefix -t 40 -m 10,5 -q 20 -d 500
 ##### Recall, -p takes diploid sample size (not haploid!). make sure -p argument follows order of individuals in bamlist!
+##### Use -F 1 to force overwrite existing ${output_name}.${pop}.saf.idx files. Otherwise they will be used under the assumption that they are appropriate.
 
 ##### For reference, see:
 #http://popgen.dk/angsd/index.php/MsToGlf
 #http://popgen.dk/angsd/index.php/Thetas,Tajima,Neutrality_tests
 #https://github.com/mfumagalli/Tjarno/blob/master/Files/selection_2.md
 
-
 ##### Parse input arguments
-while getopts f:p:r:R:w:o:t:m:q: option
+FORCE=0
+while getopts f:F:p:r:R:w:o:t:m:q:d: option
 do
 case "${option}"
 in
 f) bamlist=${OPTARG};;
+F) FORCE=${OPTARG};;
 p) pop_info=${OPTARG};;
-r) REF_index=$OPTARG;;
-R) REF_fasta=$OPTARG;;
-w) working_dir=$OPTARG;;
-o) output_name=$OPTARG;;
-t) threads=$OPTARG;;
-m) min_ind=$OPTARG;;
-q) min_mapQ=$OPTARG;;
+r) REF_index=${OPTARG};;
+R) REF_fasta=${OPTARG};;
+w) working_dir=${OPTARG};;
+o) output_name=${OPTARG};;
+t) threads=${OPTARG};;
+m) min_ind=${OPTARG};;
+q) min_mapQ=${OPTARG};;
+d) max_depth=${OPTARG};;
 esac
 done
 
@@ -47,6 +50,7 @@ IFS=', ' read -r -a minind_array <<< "$min_ind"
 
 # Print input (verbose)
 echo "Input file:" $bamlist
+echo "force overwrite of" ${working_dir}/${prefix}.pop${pop}.saf.idx "?: " ${FORCE}
 echo "The final output file will be named:" $output_name
 echo "Reference index is given at:" $REF_index
 echo "Reference fasta is given at:" $REF_fasta
@@ -58,6 +62,9 @@ echo "Using # threads:" $threads
 echo "Requiring at least N inds:" $min_ind
 echo "Requiring minimum mapQ:" $min_mapQ
 
+if [ ! -d ${working_dir} ]; then
+	mkdir ${working_dir}
+fi
 
 ##### Generate a list of populations, and of all population pairs.
 if [ ! -f ${working_dir}/pop_list ]; then
@@ -80,34 +87,6 @@ fi
 # Number of population pairs
 num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 
-# null header stuff, don't think it's needed
-# ##### Generate null output template, in the case of a null (zero segsites) or invalid (segsites > sequence length) msms output
-# #if [ ! -f ${working_dir}/null.headers ]; then
-# for pop in $(seq 1 ${no_pops}); do
-# # To add suffix after each word, see: https://stackoverflow.com/questions/28984295/add-comma-after-each-word
-# echo -e "tW"'\t'"tP"'\t'"tF"'\t'"tH"'\t'"tL"'\t'"Tajima"'\t'"fuf"'\t'"fud"'\t'"fayh"'\t'"zeng" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.thetas
-# echo -e "singletons"'\t'"doubletons" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.sfs
-# done
-# paste ${working_dir}/pop*.null_headers.thetas > ${working_dir}/null_headers.thetas
-# paste ${working_dir}/pop*.null_headers.sfs > ${working_dir}/null_headers.sfs
-# 
-# for pop in $(seq 1 ${num_pairs}); do
-# pop_pair=`sed -n ${pop}p < ${working_dir}/pop_name_pairs`
-# # Remember, set allows you to define the elements of your list as variables, according to their order
-# set -- $pop_pair
-# # Print headers
-# echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.null_headers.fst
-# done
-# paste ${working_dir}/pop*.pop*.null_headers.fst > ${working_dir}/null_headers.fst
-# # Concatenate all headers
-# paste ${working_dir}/null_headers.thetas ${working_dir}/null_headers.sfs ${working_dir}/null_headers.fst > ${working_dir}/null.headers
-# # Remove temporary files
-# rm pop*.null_headers.* null_headers.*
-#   fi
-# # Number of headers
-# #num_headers=$(cat ${working_dir}/null.headers | awk '{print NF}')
-
-
 ##### MAIN FUNCTION #####
 
 ## calculate genotype likelihoods, output in binary format (doGlf 1)
@@ -120,25 +99,39 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		let end+="${pop_array[${pop}-1]}"
 		start=$(( ${end} - ${pop_array[${pop}-1]} + 1 ))
 		no_inds_per_pop="${pop_array[${pop}-1]}"
-		echo "Population" $pop "- starting individual:" $start "; ending individual:" $end "; population size:" $no_inds_per_pop
+		 echo "Population" $pop "- starting individual:" $start "; ending individual:" $end "; population size:" $no_inds_per_pop
+		## assign min inds per pop x to min_ind_pop
 		let "min_ind_pop=${minind_array[${pop}-1]}"
-		echo "Requiring genotypes from at least " $min_ind_pop " individuals"
-		# Extract populations from GLF file (by number of individuals per population)
-		#splitgl ${working_dir}/${prefix}.gl.glf.gz ${no_inds_total} ${start} ${end} > ${working_dir}/pop${pop}.glf.gz
+		 echo "Requiring genotypes from at least " $min_ind_pop " individuals"
 		## make separate bamlist file for each pop
 		tail -n+${start} ${bamlist} | head -n ${end} > ${working_dir}/pop${pop}.bamlist.txt
 		# Calculate the site allele frequency likelihoods (doSaf)
-		echo "Calculating SAF for population" $pop
-		angsd -doSaf 1 -bam ${working_dir}/pop${pop}.bamlist.txt -GL 1 -uniqueOnly 1 -baq 1 -minMapQ ${min_mapQ} -minInd ${min_ind_pop} -doCheck 0 -P 2 -fai ${REF_index} -anc ${REF_fasta} -ref ${REF_fasta} -out ${working_dir}/pop${pop}
-		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -P ${threads} -fai ${REF_index} -out ${working_dir}/pop${pop}
+		getSaf () {
+			angsd -doSaf 1 -doCheck 0 -P 2 -bam ${working_dir}/pop${pop}.bamlist.txt \
+				-GL 1 -uniqueOnly 1 -baq 1 -only_proper_pairs 1 \
+				-minMapQ ${min_mapQ} -setMaxDepth ${max_depth} -minInd ${min_ind_pop} -fai ${REF_index} -anc ${REF_fasta} -ref ${REF_fasta} \
+				-out ${working_dir}/${prefix}.pop${pop} &> /dev/null
+		}
+		if [[ ${FORCE} -eq 1 ]]; then
+			echo "FORCE recalculating SAF for population " $pop " regardless of whether" ${working_dir}/${prefix}.pop${pop}.saf.idx "exists"
+			# force use of 2 threads (seems fastest; certainly much faster than higher numbers e.g. 20)
+		getSaf
+		fi
+		if [ ! -f ${working_dir}/${prefix}.pop${pop}.saf.idx ]; then
+			echo "No pre-existing .saf.idx file detected. Calculating SAF for population" $pop
+			# force use of 2 threads (seems fastest; certainly much faster than higher numbers e.g. 20)
+		getSaf
+		else
+			echo "SAF for this pop already exists:" ${working_dir}/${prefix}.pop${pop}.saf.idx ". Using it instead of recomputing. Use -F 1 to force overwrite existing file."
+		fi
 		# Calculate the SFS (for use as prior in calculation of thetas)
-		echo "Calculating SFS for population" $pop
-		realSFS ${working_dir}/pop${pop}.saf.idx -P ${threads} -fold 1 > ${working_dir}/pop${pop}.sfs
+		 echo "Calculating SFS for population" $pop
+		realSFS ${working_dir}/${prefix}.pop${pop}.saf.idx -P ${threads} -fold 1 2> /dev/null > ${working_dir}/pop${pop}.sfs 
 		# Calculate the site allele frequency likelihoods (doSaf)
-		echo "Calculating thetas for population" $pop	
+		 echo "Calculating thetas for population" $pop	
 		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
-		realSFS saf2theta ${working_dir}/pop${pop}.saf.idx -P ${threads} -fold 1 -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop}
-		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx
+		realSFS saf2theta ${working_dir}/${prefix}.pop${pop}.saf.idx -P ${threads} -fold 1 -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop} &> /dev/null
+		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx &> /dev/null
 	done
 	echo "All populations' thetas calculated!"
 
@@ -147,15 +140,15 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 	echo "Preparing calculation of pairwise statistics..."
 	for pop in $(seq 1 ${num_pairs}); do
 		pop_pair=`sed -n ${pop}p < ${working_dir}/pop_name_pairs`
-		echo "Processing population pair" $pop_pair
+		 echo "Processing population pair" $pop_pair
 		# Remember, set allows you to define the elements of your list as variables, according to their order
 		set -- $pop_pair
 		# Calculate the 2DSFS prior
-		echo "Calculating 2D SFS for population pair" $pop_pair	
-		realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P ${threads} -fold 1 > ${working_dir}/${1}.${2}.ml
+		 echo "Calculating 2D SFS for population pair" $pop_pair	
+		realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -P ${threads} -fold 1 > ${working_dir}/${1}.${2}.ml
 		# Calculate the FST
-		echo "Calculating FST for population pair" $pop_pair
-		realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1
+		 echo "Calculating FST for population pair" $pop_pair
+		realSFS fst index ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1
 		# Get the global estimate (here we output only the weighted estimate)
 		echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.globalFST
 		realSFS fst stats ${working_dir}/${1}.${2}.stats.fst.idx 2> /dev/null | cut -f 2 >> ${working_dir}/${1}.${2}.globalFST
@@ -189,7 +182,7 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 	#		set -- $pop_trio
 	#		##calculate pbs and fst
 	#		echo "Calculating PBS for population trio" $pop_trio
-	#		realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -sfs ${working_dir}/${1}.${2}.ml ${working_dir}/${1}.${3}.ml ${working_dir}/${2}.${3}.ml -fstout ${working_dir}/${1}.${2}.${3}.stats -whichFst 1
+	#		realSFS fst index ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx ${working_dir}/${prefix}.${3}.saf.idx -sfs ${working_dir}/${1}.${2}.ml ${working_dir}/${1}.${3}.ml ${working_dir}/${2}.${3}.ml -fstout ${working_dir}/${1}.${2}.${3}.stats -whichFst 1
 
 	#		#get the global estimate (here we're interested in outputting the PBS results)
 	#		realSFS fst stats ${working_dir}/${1}.${2}.${3}.stats.fst.idx >> ${working_dir}/${1}.${2}.${3}.globalPBS
@@ -205,8 +198,13 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 	for pop in $(seq 1 ${no_pops}); do	
 		pop_suffix=".pop${pop}"
 		# For adding suffix, see: https://unix.stackexchange.com/questions/265335/adding-a-number-as-a-suffix-to-multiple-columns. For expanding variable in awk, use the -v option; see: https://unix.stackexchange.com/questions/340369/expanding-variables-in-awk. Tab separate fields via -v OFS='\t' (see: https://askubuntu.com/questions/231995/how-to-separate-fields-with-space-or-tab-in-awk)
-		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | head -n 1 | awk  -v OFS='\t' '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }' | awk -v OFS='\t' -v pop_suffix="$pop_suffix" '{$1 = $1 pop_suffix; $2 = $2 pop_suffix; $3 = $3 pop_suffix; $4 = $4 pop_suffix; $5 = $5 pop_suffix; $6 = $6 pop_suffix; $7 = $7 pop_suffix; $8 = $8 pop_suffix; $9 = $9 pop_suffix; $10 = $10 pop_suffix; print }' > ${working_dir}/pop${pop}.thetas.idx.headers
-		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk  -v OFS='\t' '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }' >> ${working_dir}/pop${pop}.thetas.idx.headers
+		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | head -n 1 | awk  -v OFS='\t' '{ print $4, $5, $9 }' | awk -v OFS='\t' -v pop_suffix="$pop_suffix" '{$1 = $1 pop_suffix; $2 = $2 pop_suffix; $3 = $3 pop_suffix; print }' > ${working_dir}/pop${pop}.thetas.idx.headers
+		# we need to get mean values across loci, whereas lsd_low only uses one (simulated) locus so tail is point estimates		
+		# cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk  -v OFS='\t' '{ print $4, $5, $9 }' >> ${working_dir}/pop${pop}.thetas.idx.headers
+		mean_tW=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $4 } END { if (NR > 0) print sum / NR }' )
+		mean_tP=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $5 } END { if (NR > 0) print sum / NR }' )
+		mean_TajimaD=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $9 } END { if (NR > 0) print sum / NR }' )
+		printf "$mean_tW\t$mean_tP\t$mean_TajimaD" >> ${working_dir}/pop${pop}.thetas.idx.headers
 	done
 	paste ${working_dir}/pop*.thetas.idx.headers > ${working_dir}/thetas.results.concatenated
 
