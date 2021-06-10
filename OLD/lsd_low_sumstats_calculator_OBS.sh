@@ -2,7 +2,7 @@
 
 ##### This is a bash-based ANGSD wrapper that calculates summary statistics from bam files. It has been written to be compatible with the ioutput of lsd_low.sh.
 ##### Seth Musker 07.06.2021 (adapted from lsd_low.sh by Hirzi Luqman, 11.03.2019)
-##### Example usage: ./lsd_low_sumstats_calculator_OBS.sh -f bamlist.txt -p 12,6 -r ${REF_index} -R ${REF_fasta} -w ${working_dir} -o myoutput_prefix -t 40 -m 10,5 -q 20 -d 500
+##### Example usage: ./lsd_low_sumstats_calculator_OBS.sh -f bamlist.txt -p 12,6 -r ${REF_index} -R ${REF_fasta} -w ${working_dir} -o myoutput_prefix -t 40 -m 10,5 -q 20 -d 500 -P 1 -a ${ANC_fasta} -f 0 
 ##### Recall, -p takes diploid sample size (not haploid!). make sure -p argument follows order of individuals in bamlist!
 ##### Use -F 1 to force overwrite existing ${output_name}.${pop}.saf.idx files. Otherwise they will be used under the assumption that they are appropriate.
 
@@ -13,11 +13,11 @@
 
 ##### Parse input arguments
 FORCE=0
-while getopts f:F:p:r:R:w:o:t:m:q:d: option
+while getopts b:F:p:r:R:w:o:t:m:q:d:P: option
 do
 case "${option}"
 in
-f) bamlist=${OPTARG};;
+b) bamlist=${OPTARG};;
 F) FORCE=${OPTARG};;
 p) pop_info=${OPTARG};;
 r) REF_index=${OPTARG};;
@@ -28,6 +28,8 @@ t) threads=${OPTARG};;
 m) min_ind=${OPTARG};;
 q) min_mapQ=${OPTARG};;
 d) max_depth=${OPTARG};;
+P) proper_pairs=${OPTARG};;
+
 esac
 done
 
@@ -61,6 +63,7 @@ echo "Total number of populations:" $no_pops
 echo "Using # threads:" $threads
 echo "Requiring at least N inds:" $min_ind
 echo "Requiring minimum mapQ:" $min_mapQ
+echo "Requiring only properly mapped pairs?:" $proper_pairs
 
 if [ ! -d ${working_dir} ]; then
 	mkdir ${working_dir}
@@ -104,11 +107,11 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		let "min_ind_pop=${minind_array[${pop}-1]}"
 		 echo "Requiring genotypes from at least " $min_ind_pop " individuals"
 		## make separate bamlist file for each pop
-		tail -n+${start} ${bamlist} | head -n ${end} > ${working_dir}/pop${pop}.bamlist.txt
+		tail -n+${start} ${bamlist} | head -n ${no_inds_per_pop} > ${working_dir}/pop${pop}.bamlist.txt
 		# Calculate the site allele frequency likelihoods (doSaf)
 		getSaf () {
 			angsd -doSaf 1 -doCheck 0 -doCounts 1 -P 2 -bam ${working_dir}/pop${pop}.bamlist.txt \
-				-GL 1 -uniqueOnly 1 -baq 1 -only_proper_pairs 1 \
+				-GL 1 -uniqueOnly 1 -baq 1 -only_proper_pairs ${proper_pairs} \
 				-minMapQ ${min_mapQ} -setMaxDepth ${max_depth} -minInd ${min_ind_pop} -fai ${REF_index} -anc ${REF_fasta} -ref ${REF_fasta} \
 				-out ${working_dir}/${prefix}.pop${pop}
 		}
@@ -126,7 +129,7 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		fi
 		# Calculate the SFS (for use as prior in calculation of thetas)
 		 echo "Calculating SFS for population" $pop
-		realSFS ${working_dir}/${prefix}.pop${pop}.saf.idx -P ${threads} -fold 1 2> /dev/null > ${working_dir}/pop${pop}.sfs 
+		realSFS ${working_dir}/${prefix}.pop${pop}.saf.idx -P ${threads} -fold 1 > ${working_dir}/pop${pop}.sfs 
 		# Calculate the site allele frequency likelihoods (doSaf)
 		 echo "Calculating thetas for population" $pop	
 		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
