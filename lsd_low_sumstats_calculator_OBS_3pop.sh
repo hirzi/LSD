@@ -195,10 +195,11 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 			# Remember, set allows you to define the elements of your list as variables, according to their order
 			set -- $pop_pair
 			echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.globalFST
-			if [[ ${no_pops} = 2 ]]; then
-				# Calculate the 2DSFS prior
-				echo "Calculating 2D SFS for population pair" $pop_pair	
-				realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${2}.ml
+			# Calculate the 2DSFS prior
+			echo "Calculating 2D SFS for population pair" $pop_pair	
+			realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${2}.ml
+			if [[ ! ${no_pops} = 3 ]]; then
+				echo "there are" ${no_pops} "populations, won't do PBS"
 				# Calculate the FST
 				 echo "Calculating FST for population pair" $pop_pair
 				realSFS fst index ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1 -fold ${folded}
@@ -237,10 +238,10 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 			# Remember, set allows you to define the elements of your list as variables, according to their order
 			set -- $pop_trio
 			## calculate 2DSFS priors
-			echo "calculating 2DSFS for every pair"
-			realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${2}.ml
-			realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${3}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${3}.ml
-			realSFS ${working_dir}/${prefix}.${2}.saf.idx ${working_dir}/${prefix}.${3}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${2}.${3}.ml
+			# echo "calculating 2DSFS for every pair"
+			# realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${2}.ml
+			# realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${3}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${3}.ml
+			# realSFS ${working_dir}/${prefix}.${2}.saf.idx ${working_dir}/${prefix}.${3}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${2}.${3}.ml
 			##calculate pbs and fst
 			echo "Calculating PBS for population trio" 
 			realSFS fst index ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx ${working_dir}/${prefix}.${3}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -sfs ${working_dir}/${1}.${3}.ml -sfs ${working_dir}/${2}.${3}.ml -fstout ${working_dir}/${1}.${2}.${3}.stats -whichFst 1 -fold ${folded}
@@ -294,7 +295,7 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
         }
         print str
     }
-		}' > ${working_dir}/PBS.results.concatenated
+		}' | sed 's/ /\t/g' > ${working_dir}/PBS.results.concatenated
 
 	# Concatenate all results (make sure all fields are tab-separated)
 	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}.txt
