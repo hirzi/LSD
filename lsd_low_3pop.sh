@@ -31,6 +31,10 @@ o) output_name=$OPTARG;;
 esac
 done
 
+if [ ! -d ${working_dir} ]; then
+	mkdir ${working_dir}
+fi
+
 
 ##### Process input variables 
 # Name prefix
@@ -84,7 +88,7 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 if [ ! -f ${working_dir}/null.headers ]; then
 	for pop in $(seq 1 ${no_pops}); do
 		# To add suffix after each word, see: https://stackoverflow.com/questions/28984295/add-comma-after-each-word
-		echo -e "tW"'\t'"tP"'\t'"tF"'\t'"tH"'\t'"tL"'\t'"Tajima"'\t'"fuf"'\t'"fud"'\t'"fayh"'\t'"zeng" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.thetas
+		echo -e "tW"'\t'"tP"'\t'"Tajima" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.thetas
 		echo -e "singletons"'\t'"doubletons" | sed "s/\>/.pop${pop}/g" > ${working_dir}/pop${pop}.null_headers.sfs
 	done
 	paste ${working_dir}/pop*.null_headers.thetas > ${working_dir}/null_headers.thetas
@@ -101,7 +105,7 @@ if [ ! -f ${working_dir}/null.headers ]; then
 	# Concatenate all headers
 	paste ${working_dir}/null_headers.thetas ${working_dir}/null_headers.sfs ${working_dir}/null_headers.fst > ${working_dir}/null.headers
 	# Remove temporary files
-	rm pop*.null_headers.* null_headers.*
+	rm ${working_dir}/pop*.null_headers.* ${working_dir}/null_headers.*
 fi
 # Number of headers
 num_headers=$(cat ${working_dir}/null.headers | awk '{print NF}')
@@ -133,7 +137,7 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 	##### Simulate genotype likelihoods (msToGLF)
 	# Simulate genotype likelihoods from msms output via msToGlf defining error rate, sequencing depth (you can also supply a depthFile filename if you want to force a different mean depth between individuals), number of diploid individuals, and sequence length (simulating invariant sites). Outputting a single replicate from same scenario (-singleOut 1)
 	echo "Simulating genotype likelihoods with error rate of" $error_rate "and depth of" $depth"X; also simulating invariant sites assuming sequence length of" $sequence_length"bp"
-	msToGlf -in ${working_dir}/${ms_file} -out ${working_dir}/${prefix}.gl -err ${error_rate} -depth ${depth} -nind ${no_inds_total} -singleOut 1 -regLen ${sequence_length}
+	msToGlf -in ${working_dir}/${ms_file} -out ${working_dir}/${prefix}.gl -err ${error_rate} -depth ${depth} -nind ${no_inds_total} -singleOut 1 -regLen ${sequence_length} &> /dev/null
 
 	##### Calculate single population summary statistics (ANGSD)
 	end=0
@@ -145,19 +149,20 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 		no_inds_per_pop="${pop_array[${pop}-1]}"
 		echo "Population" $pop "- starting individual:" $start "; ending individual:" $end "; population size:" $no_inds_per_pop
 		# Extract populations from GLF file (by number of individuals per population)
-		splitgl ${working_dir}/${prefix}.gl.glf.gz ${no_inds_total} ${start} ${end} > ${working_dir}/pop${pop}.glf.gz
+		splitgl ${working_dir}/${prefix}.gl.glf.gz ${no_inds_total} ${start} ${end} > ${working_dir}/pop${pop}.glf.gz &> /dev/null
 		# Calculate the site allele frequency likelihoods (doSaf)
 		echo "Calculating SAF for population" $pop
-		angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -isSim 1 -P 1 -fai ${REF_index} -out ${working_dir}/pop${pop}
+		angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -isSim 1 -P 1 -fai ${REF_index} -out ${working_dir}/pop${pop} &> /dev/null
 		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -isSim 1 -P 1 -fai ${REF_index} -out ${working_dir}/pop${pop}
 		# Calculate the SFS (for use as prior in calculation of thetas)
 		echo "Calculating SFS for population" $pop
-		realSFS ${working_dir}/pop${pop}.saf.idx -P 1 > ${working_dir}/pop${pop}.sfs
+		realSFS ${working_dir}/pop${pop}.saf.idx -P 1 2> dev/null > ${working_dir}/pop${pop}.sfs 
 		# Calculate the site allele frequency likelihoods (doSaf)
 		echo "Calculating thetas for population" $pop	
-		angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
+		# angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
+		realSFS saf2theta ${working_dir}/pop${pop}.saf.idx -P 1 -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop} &> /dev/null
 		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
-		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx
+		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx &> /dev/null
 	done
 	echo "All populations' thetas calculated!"
 
@@ -192,12 +197,12 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 			echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.globalFST
 			# Calculate the 2DSFS prior
 			echo "Calculating 2D SFS for population pair" $pop_pair	
-			realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${2}.ml
+			realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P 1 2> /dev/null > ${working_dir}/${1}.${2}.ml 
 			if [[ ! ${no_pops} = 3 ]]; then
 				echo "there are not 3 but" ${no_pops} "populations, won't do PBS"
 				# Calculate the FST
 				 echo "Calculating FST for population pair" $pop_pair
-				realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1 -fold ${folded}
+				realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1 &> /dev/null
 				# Get the global estimate (here we output only the weighted estimate)
 				realSFS fst stats ${working_dir}/${1}.${2}.stats.fst.idx 2> /dev/null | cut -f 2 >> ${working_dir}/${1}.${2}.globalFST
 				 echo "All populations' FSTs calculated!"
@@ -262,12 +267,12 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 			set -- $pop_trio
 			## calculate 2DSFS priors
 			# echo "calculating 2DSFS for every pair"
-			# realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${2}.ml
-			# realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${3}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${3}.ml
-			# realSFS ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${2}.${3}.ml
+			# realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P 1  2> /dev/null > ${working_dir}/${1}.${2}.ml
+			# realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${3}.saf.idx -P 1  2> /dev/null > ${working_dir}/${1}.${3}.ml
+			# realSFS ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -P 1  2> /dev/null > ${working_dir}/${2}.${3}.ml
 			##calculate pbs and fst
 			echo "Calculating pairwise FSTs and PBS for population trio" 
-			realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -sfs ${working_dir}/${1}.${3}.ml -sfs ${working_dir}/${2}.${3}.ml -fstout ${working_dir}/${1}.${2}.${3}.stats -whichFst 1 -fold ${folded}
+			realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -sfs ${working_dir}/${1}.${3}.ml -sfs ${working_dir}/${2}.${3}.ml -fstout ${working_dir}/${1}.${2}.${3}.stats -whichFst 1 &> /dev/null
 			#get the global estimate
 			realSFS fst stats ${working_dir}/${1}.${2}.${3}.stats.fst.idx >> ${working_dir}/${1}.${2}.${3}.globalFST_PBS
 			echo
@@ -284,8 +289,13 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 	for pop in $(seq 1 ${no_pops}); do	
 		pop_suffix=".pop${pop}"
 		# For adding suffix, see: https://unix.stackexchange.com/questions/265335/adding-a-number-as-a-suffix-to-multiple-columns. For expanding variable in awk, use the -v option; see: https://unix.stackexchange.com/questions/340369/expanding-variables-in-awk. Tab separate fields via -v OFS='\t' (see: https://askubuntu.com/questions/231995/how-to-separate-fields-with-space-or-tab-in-awk)
-		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | head -n 1 | awk  -v OFS='\t' '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }' | awk -v OFS='\t' -v pop_suffix="$pop_suffix" '{$1 = $1 pop_suffix; $2 = $2 pop_suffix; $3 = $3 pop_suffix; $4 = $4 pop_suffix; $5 = $5 pop_suffix; $6 = $6 pop_suffix; $7 = $7 pop_suffix; $8 = $8 pop_suffix; $9 = $9 pop_suffix; $10 = $10 pop_suffix; print }' > ${working_dir}/pop${pop}.thetas.idx.headers
-		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk  -v OFS='\t' '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }' >> ${working_dir}/pop${pop}.thetas.idx.headers
+		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | head -n 1 | awk  -v OFS='\t' '{ print $4, $5, $9 }' | awk -v OFS='\t' -v pop_suffix="$pop_suffix" '{$1 = $1 pop_suffix; $2 = $2 pop_suffix; $3 = $3 pop_suffix; print }' > ${working_dir}/pop${pop}.thetas.idx.headers
+		# we need to get mean values across loci, whereas lsd_low only uses one (simulated) locus so tail is point estimates		
+		# cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk  -v OFS='\t' '{ print $4, $5, $9 }' >> ${working_dir}/pop${pop}.thetas.idx.headers
+		mean_tW=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $4 } END { if (NR > 0) print sum / NR }' )
+		mean_tP=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $5 } END { if (NR > 0) print sum / NR }' )
+		mean_TajimaD=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $9 } END { if (NR > 0) print sum / NR }' )
+		printf "$mean_tW\t$mean_tP\t$mean_TajimaD" >> ${working_dir}/pop${pop}.thetas.idx.headers
 	done
 	paste ${working_dir}/pop*.thetas.idx.headers > ${working_dir}/thetas.results.concatenated
 
@@ -300,6 +310,7 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 	paste ${working_dir}/pop*.pop*.globalFST > ${working_dir}/fst.results.concatenated
 
 	# Collate PBS results
+	if [ -f ${working_dir}/${1}.${2}.${3}.globalFST_PBS ];then
 	tail -n+4 ${working_dir}/${1}.${2}.${3}.globalFST_PBS | \
 	awk OFS='\t' '{for (i=1; i<=NF; i++)  {
         a[NR,i] = $i
@@ -313,9 +324,14 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
         print str
     }
 		}' | sed 's/ /\t/g' > ${working_dir}/PBS.results.concatenated
-
-	# Concatenate all results (make sure all fields are tab-separated)
+		# Concatenate all results (make sure all fields are tab-separated)
 	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}
+	else
+		# Concatenate all results (make sure all fields are tab-separated)
+	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated > ${working_dir}/${output_name}
+	fi
+
+
 	# Check that number of fields match between headers and results
 	#cat ${working_dir}/${output_name} | awk '{print NF}'
 	echo "GLF simulation and calculation of summary statistics has finished!"
