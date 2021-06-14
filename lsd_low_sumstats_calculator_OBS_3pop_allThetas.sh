@@ -181,8 +181,8 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		# Calculate the site allele frequency likelihoods (doSaf)
 		 echo "Calculating thetas for population" $pop	
 		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
-		realSFS saf2theta ${working_dir}/${prefix}.pop${pop}.saf.idx -P ${threads} -fold ${folded} -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop} &> /dev/null
-		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx &> /dev/null
+		realSFS saf2theta ${working_dir}/${prefix}.pop${pop}.saf.idx -P ${threads} -fold ${folded} -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop} &> ${working_dir}/pop${pop}.thetas.idx.log
+		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx &> ${working_dir}/pop${pop}.thetas.idx.pestPG.log
 	done
 	echo "All populations' thetas calculated!"
 	
@@ -252,18 +252,18 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 			head -n2 ${working_dir}/${1}.${2}.${3}.globalFST_PBS | tail -n1 | cut -f 2 >> ${working_dir}/${1}.${3}.globalFST
 			head -n3 ${working_dir}/${1}.${2}.${3}.globalFST_PBS | tail -n1 | cut -f 2 >> ${working_dir}/${2}.${3}.globalFST
 			tail -n+4 ${working_dir}/${1}.${2}.${3}.globalFST_PBS | \
-				awk OFS='\t' '{for (i=1; i<=NF; i++)  {
-    			a[NR,i] = $i
-  			  	}} NF>p { p = NF }
-				END {    
-    			for(j=1; j<=p; j++) {
-        		str=a[1,j]
-        		for(i=2; i<=NR; i++){
-            	str=str" "a[i,j];
-        		}
-        		print str
-    			}
-				}' | sed 's/ /\t/g' > ${working_dir}/PBS.results.concatenated
+	awk -v OFS='\t' '{for (i=1; i<=NF; i++)  {
+        a[NR,i] = $i
+    }} NF>p { p = NF }
+	END {    
+    for(j=1; j<=p; j++) {
+        str=a[1,j]
+        for(i=2; i<=NR; i++){
+            str=str" "a[i,j];
+        }
+        print str
+    }
+		}' | sed 's/ /\t/g' > ${working_dir}/PBS.results.concatenated
 		# done
 	fi
 
@@ -275,13 +275,26 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 	for pop in $(seq 1 ${no_pops}); do	
 		pop_suffix=".pop${pop}"
 		# For adding suffix, see: https://unix.stackexchange.com/questions/265335/adding-a-number-as-a-suffix-to-multiple-columns. For expanding variable in awk, use the -v option; see: https://unix.stackexchange.com/questions/340369/expanding-variables-in-awk. Tab separate fields via -v OFS='\t' (see: https://askubuntu.com/questions/231995/how-to-separate-fields-with-space-or-tab-in-awk)
-		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | head -n 1 | awk  -v OFS='\t' '{ print $4, $5, $9 }' | awk -v OFS='\t' -v pop_suffix="$pop_suffix" '{$1 = $1 pop_suffix; $2 = $2 pop_suffix; $3 = $3 pop_suffix; print }' > ${working_dir}/pop${pop}.thetas.idx.headers
+		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | head -n 1 | awk  -v OFS='\t' '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }' | awk -v OFS='\t' -v pop_suffix="$pop_suffix" '{$1 = $1 pop_suffix; $2 = $2 pop_suffix; $3 = $3 pop_suffix; $4 = $4 pop_suffix; $5 = $5 pop_suffix; $6 = $6 pop_suffix; $7 = $7 pop_suffix; $8 = $8 pop_suffix; $9 = $9 pop_suffix; $10 = $10 pop_suffix; print }' > ${working_dir}/pop${pop}.thetas.idx.headers
 		# we need to get mean values across loci, whereas lsd_low only uses one (simulated) locus so tail is point estimates		
 		# cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk  -v OFS='\t' '{ print $4, $5, $9 }' >> ${working_dir}/pop${pop}.thetas.idx.headers
+		# theta estimators
 		mean_tW=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $4 } END { if (NR > 0) print sum / NR }' )
 		mean_tP=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $5 } END { if (NR > 0) print sum / NR }' )
+		mean_tF=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $6 } END { if (NR > 0) print sum / NR }' )
+		mean_tH=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $7 } END { if (NR > 0) print sum / NR }' )
+		mean_tL=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $8 } END { if (NR > 0) print sum / NR }' )
+		# neutrality stats (all other than TajimaD occasionally [0.02% of the time] return NA results which need to be removed)
+		# just in case, report
+		num_na=$(grep 'nan' ${working_dir}/pop${pop}.thetas.idx.pestPG | wc -l)
+		num_scaff=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | wc -l)
+		echo "Looked for NA values in thetas: there are " ${num_na} "out of" ${num_scaff}
 		mean_TajimaD=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $9 } END { if (NR > 0) print sum / NR }' )
-		printf "$mean_tW\t$mean_tP\t$mean_TajimaD" >> ${working_dir}/pop${pop}.thetas.idx.headers
+		mean_FuF=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | awk -v OFS='\t' '{ sum += $10 } END { if (NR > 0) print sum / NR }' )
+		mean_FuD=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | awk -v OFS='\t' '{ sum += $11 } END { if (NR > 0) print sum / NR }' )
+		mean_FayH=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | awk -v OFS='\t' '{ sum += $12 } END { if (NR > 0) print sum / NR }' )
+		mean_ZengE=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | awk -v OFS='\t' '{ sum += $13 } END { if (NR > 0) print sum / NR }' )
+		printf "$mean_tW\t$mean_tP\t$mean_tF\t$mean_tH\t$mean_tL\t$mean_TajimaD\t$mean_FuF\t$mean_FuD\t$mean_FayH\t$mean_ZengE" >> ${working_dir}/pop${pop}.thetas.idx.headers
 	done
 	paste ${working_dir}/pop*.thetas.idx.headers > ${working_dir}/thetas.results.concatenated
 
@@ -294,9 +307,29 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 
 	# Collate FST results
 	paste ${working_dir}/pop*.pop*.globalFST > ${working_dir}/fst.results.concatenated
-		
-	if [[ ${no_pops} = 3 ]]; then
-		# Concatenate all results (make sure all fields are tab-separated) (Include PBS)
+	
+	# # Collate PBS results
+	# tail -n+4 ${working_dir}/${1}.${2}.${3}.globalFST_PBS | \
+	# awk '{for (i=1; i<=NF; i++)  {
+    #     a[NR,i] = $i
+    # }} NF>p { p = NF }
+	# END {    
+    # for(j=1; j<=p; j++) {
+    #     str=a[1,j]
+    #     for(i=2; i<=NR; i++){
+    #         str=str" "a[i,j];
+    #     }
+    #     print str
+    # }
+	# 	}' | sed 's/ /\t/g' > ${working_dir}/PBS.results.concatenated
+
+	# # Concatenate all results (make sure all fields are tab-separated)
+	# paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}.txt
+	# # Check that number of fields match between headers and results
+	#cat ${working_dir}/${output_name} | awk '{print NF}'
+	# Collate PBS results
+	if [ -f ${working_dir}/PBS.results.concatenated ];then
+		# Concatenate all results (make sure all fields are tab-separated)
 	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}
 	else
 		# Concatenate all results (make sure all fields are tab-separated)
@@ -306,6 +339,9 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 
 	##### Remove temporary and intermediate files
 	#rm
+
+	### gzip log files
+	gzip ${working_dir}/*.log
 
 ##### END OF MAIN FUNCTION #####
 
