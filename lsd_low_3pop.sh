@@ -3,6 +3,8 @@
 ##### This is a bash-based msToGLF and ANGSD wrapper that simulates genotype likelihoods and calculates summary statistics from msms output. It has been written to be compatible with ABCtoolbox.
 ##### Hirzi Luqman, 11.03.2019
 ##### Example usage: ./lsd_low.sh -w ${working_dir} -f sim.msms -p 20,20 -l 5000 -d 2 -e 0.01 -r ${REF_index} -o results.concatenated
+##### Example usage depthFile: ./lsd_low.sh -w ${working_dir} -f sim.msms -p 20,20 -l 5000 -D ${depthFile} -e 0.01 -r ${REF_index} -o results.concatenated
+##### will favour depth file over global depth value if latter is also specified
 ##### Recall, -p takes diploid sample size (not haploid!)
 
 ## ------------------
@@ -19,7 +21,7 @@ module load gcc/4.9.2 gdc angsd/0.925
 
 
 ##### Parse input arguments
-while getopts f:p:l:d:e:r:w:o: option
+while getopts f:p:l:d:D:e:r:w:o: option
 do
 case "${option}"
 in
@@ -27,17 +29,13 @@ f) ms_file=${OPTARG};;
 p) pop_info=${OPTARG};;
 l) sequence_length=${OPTARG};;
 d) depth=$OPTARG;;
+D) depth_file=$OPTARG;;
 e) error_rate=$OPTARG;;
 r) REF_index=$OPTARG;;
 w) working_dir=$OPTARG;;
 o) output_name=$OPTARG;;
 esac
 done
-
-# if [ ! -d ${working_dir} ]; then
-# 	mkdir ${working_dir}
-# fi
-
 
 ##### Process input variables 
 # Name prefix
@@ -59,7 +57,11 @@ echo "The working directory is given as:" ${working_dir}
 echo "The final output file will be named:" ${output_name}
 echo "Population array:" ${pop_info}
 echo "Simulated sequence length:" ${sequence_length}"bp"
-echo "Simulated depth:" ${depth}"X"
+if [ ! -z ${depth} ]; then
+	echo "Simulated depth:" ${depth}"X"
+elif [ ! -z ${depth_file} ]; then
+	echo "Simulating depths as per" ${depth_file}
+fi
 echo "Simulated error rate:" ${error_rate}
 echo "Total number of individuals:" ${no_inds_total}
 echo "Total number of populations:" ${no_pops}
@@ -149,8 +151,14 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 	##### Simulate genotype likelihoods (msToGLF)
 	# Simulate genotype likelihoods from msms output via msToGlf defining error rate, sequencing depth (you can also supply a depthFile filename if you want to force a different mean depth between individuals), number of diploid individuals, and sequence length (simulating invariant sites). Outputting a single replicate from same scenario (-singleOut 1)
 	echo "Simulating genotype likelihoods with error rate of" $error_rate "and depth of" $depth"X; also simulating invariant sites assuming sequence length of" $sequence_length"bp"
-	msToGlf -in ${working_dir}/${ms_file} -out ${working_dir}/${prefix}.gl -err ${error_rate} -depth ${depth} -nind ${no_inds_total} -singleOut 1 -regLen ${sequence_length} &> /dev/null
-
+	if [ ! -z ${depth} ]; then
+		if [ -z ${depth_file} ];then
+			msToGlf -in ${working_dir}/${ms_file} -out ${working_dir}/${prefix}.gl -err ${error_rate} -depth ${depth} -nind ${no_inds_total} -singleOut 1 -regLen ${sequence_length} &> /dev/null
+		fi
+	elif [ ! -z ${depth_file} ]; then
+		echo "will favour depth file over global depth value if latter is also specified"
+		msToGlf -in ${working_dir}/${ms_file} -out ${working_dir}/${prefix}.gl -err ${error_rate} -depthFile ${depth_file} -nind ${no_inds_total} -singleOut 1 -regLen ${sequence_length} &> /dev/null
+	fi
 	##### Calculate single population summary statistics (ANGSD)
 	end=0
 	for pop in $(seq 1 ${no_pops}); do
@@ -329,6 +337,12 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 		echo -e "singletons.pop"${pop}'\t'"doubletons.pop"${pop} > ${working_dir}/pop${pop}.SFS.truncated.results
 		## get NORMALISED (i.e. xi/sum(x)) values (ignoring singletons) (https://www.unix.com/shell-programming-and-scripting/131891-sum-all-rows-awk-one-liner.html)
 		cat ${working_dir}/pop${pop}.sfs | cut -d' ' -f2- | awk -v OFS='\t' '{ for(i=1; i<=NF;i++) j+=$i; print $1/j, $2/j }' >> ${working_dir}/pop${pop}.SFS.truncated.results
+		## catch zero sum SFSs (ignoring singletons ofc)
+		if [ $(cat ${working_dir}/pop${pop}.SFS.truncated.results | wc -l) -eq 1 ];then
+		echo "zero sum SFS for pop" ${pop}
+		mv ${working_dir}/pop${pop}.SFS.truncated.results ${working_dir}/pop${pop}.temp.sfs.zerosum
+			printf "0\t0\n" | cat ${working_dir}/pop${pop}.temp.sfs.zerosum - > ${working_dir}/pop${pop}.SFS.truncated.results
+		fi
 		# cat ${working_dir}/pop${pop}.sfs | awk -v OFS='\t' '{ print $2, $3 }' >> ${working_dir}/pop${pop}.SFS.truncated.results
 	done
 	paste ${working_dir}/pop*.SFS.truncated.results > ${working_dir}/SFS.truncated.results.concatenated

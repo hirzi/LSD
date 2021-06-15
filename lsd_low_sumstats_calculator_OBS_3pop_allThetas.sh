@@ -88,7 +88,7 @@ fi
 
 ## Deal with regions stuff
 if [ -z ${regions_file} ];then
-echo "no regions file specified"
+ echo "no regions file specified"
 	if [[ ! $REF_fasta = $ancestral ]];then
 	 echo "Will only use common scaffolds between" $REF_fasta "and" $ancestral
 	 awk '{print $1}' ${ancestral}.fai > ${working_dir}/`basename $ancestral`.rf
@@ -102,7 +102,7 @@ else
  echo "regions file has been specified. Making sure to keep only regions present in both reference and ancestral fasta"
  awk '{print $1}' ${ancestral}.fai | sort > ${working_dir}/ancestral.scaffolds
  ## if regions file specifies sections of scaffolds, make a file with only the scaffolds
- if [ $(grep -m1 ':' ${regions_file} | wc -l) -eq 1 ];then
+if [ $(grep -m1 ':' ${regions_file} | wc -l) -eq 1 ];then
  cut -d':' -f1 ${regions_file} | sort > ${working_dir}/ref.scaffolds
  comm -12 ${working_dir}/ref.scaffolds ${working_dir}/ancestral.scaffolds > ${working_dir}/common_regions.rf
 else
