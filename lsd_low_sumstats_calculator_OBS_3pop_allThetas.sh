@@ -2,9 +2,10 @@
 
 ##### This is a bash-based ANGSD wrapper that calculates summary statistics from bam files. It has been written to be compatible with the ioutput of lsd_low.sh.
 ##### Seth Musker 07.06.2021 (adapted from lsd_low.sh by Hirzi Luqman, 11.03.2019)
-##### Example usage: ./lsd_low_sumstats_calculator_OBS.sh -b bamlist.txt -p 12,6,7 -r ${REF_index} -R ${REF_fasta} -w ${working_dir} -o myoutput_prefix -t 40 -m 10,5,5 -q 20 -d 500 -P 1 -a ancestral.fasta -g regions.angsd.rf -f 0
+##### Example usage: ./lsd_low_sumstats_calculator_OBS.sh -b bamlist.txt -p 12,6,7 -r ${REF_index} -R ${REF_fasta} -w ${working_dir} -o myoutput_prefix -t 40 -m 10,5,5 -q 20 -d 500 -P 1 -a ancestral.fasta -g regions.angsd.rf -S keep.sites -f 0 -s min_sites_per_scaff_for_thetaMeans
 ##### Recall, -p takes diploid sample size (not haploid!). make sure -p argument follows order of individuals in bamlist!
 ##### Use -F 1 to force overwrite existing ${output_name}.${pop}.saf.idx files. Otherwise they will be used under the assumption that they are appropriate.
+##### Ancestral file must be indexed (have filename.fai)
 
 ##### For reference, see:
 #http://popgen.dk/angsd/index.php/MsToGlf
@@ -18,7 +19,8 @@ proper_pairs=1
 max_depth=500
 min_mapQ=20
 folded=0
-while getopts b:F:p:r:R:w:o:t:m:q:d:P:f:a:g: option
+min_sites=100
+while getopts b:F:p:r:R:w:o:t:m:q:d:P:f:a:g:S:s: option
 do
 case "${option}"
 in
@@ -37,6 +39,8 @@ d) max_depth=${OPTARG};;
 P) proper_pairs=${OPTARG};;
 a) ancestral=${OPTARG};;
 g) regions_file=${OPTARG};;
+S) sites_file=${OPTARG};;
+s) min_sites=${OPTARG};;
 esac
 done
 
@@ -108,10 +112,18 @@ if [ $(grep -m1 ':' ${regions_file} | wc -l) -eq 1 ];then
 else
  comm -12 ${regions_file} ${working_dir}/ancestral.scaffolds > ${working_dir}/common_regions.rf
 fi
- crl=`wc -l ${working_dir}/common_regions.rf`
- ogl=`wc -l ${regions_file}`
+ crl=`cat ${working_dir}/common_regions.rf | wc -l`
+ ogl=`cat ${regions_file} | wc -l`
  echo "there are" $ogl "regions in provided file." $crl "are present"
  regions_file=${working_dir}/common_regions.rf
+fi
+
+if [ ! -z ${sites_file} ];then
+	echo "sites file specified: " ${sites_file} 
+	if [ ! -f ${sites_file}.idx ];then
+		echo "not indexed. Indexing."
+		angsd sites index ${sites_file}
+	fi
 fi
 
 
@@ -155,12 +167,21 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		## make separate bamlist file for each pop
 		tail -n+${start} ${bamlist} | head -n ${no_inds_per_pop} > ${working_dir}/pop${pop}.bamlist.txt
 		# Calculate the site allele frequency likelihoods (doSaf)
+		if [ ! -z ${sites_file} ];then
+		getSaf () {
+			angsd -doSaf 1 -doCheck 0 -doCounts 1 -P 2 -bam ${working_dir}/pop${pop}.bamlist.txt \
+				-GL 1 -uniqueOnly 1 -baq 1 -only_proper_pairs ${proper_pairs} \
+				-minMapQ ${min_mapQ} -setMaxDepth ${max_depth} -minInd ${min_ind_pop} -fai ${REF_index} -ref ${REF_fasta} -anc ${ancestral} \
+				-out ${working_dir}/${prefix}.pop${pop} -rf ${regions_file} -sites ${sites_file}
+		}
+		else
 		getSaf () {
 			angsd -doSaf 1 -doCheck 0 -doCounts 1 -P 2 -bam ${working_dir}/pop${pop}.bamlist.txt \
 				-GL 1 -uniqueOnly 1 -baq 1 -only_proper_pairs ${proper_pairs} \
 				-minMapQ ${min_mapQ} -setMaxDepth ${max_depth} -minInd ${min_ind_pop} -fai ${REF_index} -ref ${REF_fasta} -anc ${ancestral} \
 				-out ${working_dir}/${prefix}.pop${pop} -rf ${regions_file}
 		}
+		fi
 		if [[ ${FORCE} -eq 1 ]]; then
 			echo "FORCE recalculating SAF for population " $pop " regardless of whether" ${working_dir}/${prefix}.pop${pop}.saf.idx "exists"
 			# force use of 2 threads (seems fastest; certainly much faster than higher numbers e.g. 20)
@@ -185,6 +206,9 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx &> ${working_dir}/pop${pop}.thetas.idx.pestPG.log
 	done
 	echo "All populations' thetas calculated!"
+	# if [-f ${working_dir}/${sites_file}.temp.sorted ];then
+	# 	rm ${working_dir}/${sites_file}.temp.sorted
+	# fi
 	
 	##### Calculate pairwise population summary statistics (ANGSD)
 
@@ -279,21 +303,23 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 		# we need to get mean values across loci, whereas lsd_low only uses one (simulated) locus so tail is point estimates		
 		# cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk  -v OFS='\t' '{ print $4, $5, $9 }' >> ${working_dir}/pop${pop}.thetas.idx.headers
 		# theta estimators
-		mean_tW=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $4 } END { if (NR > 0) print sum / NR }' )
-		mean_tP=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $5 } END { if (NR > 0) print sum / NR }' )
-		mean_tF=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $6 } END { if (NR > 0) print sum / NR }' )
-		mean_tH=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $7 } END { if (NR > 0) print sum / NR }' )
-		mean_tL=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $8 } END { if (NR > 0) print sum / NR }' )
+			# remove chromosomes with < min_sites sites (should also remove (-)Inf values of fuf, fud, fayh and zeng)
+		tail -n+2 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v nsites=${min_sites} '{if ($14 >= nsites) print $0}' > ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG
+		mean_tW=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | awk -v OFS='\t' '{ sum += $4 } END { if (NR > 0) print sum / NR }' )
+		mean_tP=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | awk -v OFS='\t' '{ sum += $5 } END { if (NR > 0) print sum / NR }' )
+		mean_tF=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | awk -v OFS='\t' '{ sum += $6 } END { if (NR > 0) print sum / NR }' )
+		mean_tH=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | awk -v OFS='\t' '{ sum += $7 } END { if (NR > 0) print sum / NR }' )
+		mean_tL=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | awk -v OFS='\t' '{ sum += $8 } END { if (NR > 0) print sum / NR }' )
 		# neutrality stats (all other than TajimaD occasionally [0.02% of the time] return NA results which need to be removed)
 		# just in case, report
-		num_na=$(grep 'nan' ${working_dir}/pop${pop}.thetas.idx.pestPG | wc -l)
-		num_scaff=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | wc -l)
+		num_na=$(grep 'nan' ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | wc -l)
+		num_scaff=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | wc -l)
 		echo "Looked for NA values in thetas: there are " ${num_na} "out of" ${num_scaff}
-		mean_TajimaD=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $9 } END { if (NR > 0) print sum / NR }' )
-		mean_FuF=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | awk -v OFS='\t' '{ sum += $10 } END { if (NR > 0) print sum / NR }' )
-		mean_FuD=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | awk -v OFS='\t' '{ sum += $11 } END { if (NR > 0) print sum / NR }' )
-		mean_FayH=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | awk -v OFS='\t' '{ sum += $12 } END { if (NR > 0) print sum / NR }' )
-		mean_ZengE=$(tail -n+1 ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | awk -v OFS='\t' '{ sum += $13 } END { if (NR > 0) print sum / NR }' )
+		mean_TajimaD=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | awk -v OFS='\t' '{ sum += $9 } END { if (NR > 0) print sum / NR }' )
+		mean_FuF=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | grep -v 'nan' | grep -v 'inf' | awk -v OFS='\t' '{ sum += $10 } END { if (NR > 0) print sum / NR }' )
+		mean_FuD=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | grep -v 'nan' | grep -v 'inf' | awk -v OFS='\t' '{ sum += $11 } END { if (NR > 0) print sum / NR }' )
+		mean_FayH=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | grep -v 'nan' | grep -v 'inf' | awk -v OFS='\t' '{ sum += $12 } END { if (NR > 0) print sum / NR }' )
+		mean_ZengE=$(cat ${working_dir}/pop${pop}.thetas.idx.min${min_sites}sites.pestPG | grep -v 'nan' | grep -v 'inf' | awk -v OFS='\t' '{ sum += $13 } END { if (NR > 0) print sum / NR }' )
 		printf "$mean_tW\t$mean_tP\t$mean_tF\t$mean_tH\t$mean_tL\t$mean_TajimaD\t$mean_FuF\t$mean_FuD\t$mean_FayH\t$mean_ZengE" >> ${working_dir}/pop${pop}.thetas.idx.headers
 	done
 	paste ${working_dir}/pop*.thetas.idx.headers > ${working_dir}/thetas.results.concatenated

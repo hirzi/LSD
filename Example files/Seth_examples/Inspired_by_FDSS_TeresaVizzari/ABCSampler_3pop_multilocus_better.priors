@@ -1,0 +1,74 @@
+// ABCtoolbox priors and rules file
+// *********************
+
+// #### Example 11 parameter, 3 population model ####
+
+// msms command line in input file: msms 50 no_loci -t theta -I 3 24 12 14 -n 1 fraction_N1 -n 2 fraction_N2 -n 3 fraction_N3 -ma x m12 m13 m21 x m23 m31 m32 x -ej tj12 1 2 -ej tj23 2 3
+//	with ancestral size changes: 50 no_loci -t theta -I 3 24 12 14 -n 1 fraction_N1 -n 2 fraction_N2 -n 3 fraction_N3 -ma x m12 m13 m21 x m23 m31 m32 x -ej tj12 1 2 -ej tj23 2 3 -en tj23 3 fraction_NA23 -en tj12 3 fraction_NA12
+
+
+[PARAMETERS]
+
+//	#isInt? #name	#dist.#min	#max
+
+// Population merge times (in generations!!; below scale to theta)
+1	TJ12	unif	10	15000	output	
+1	TJ23	unif	20	30000	output	
+
+//	Effective population sizes  (set minumum at around 300 inds) [[For now don't include ancestral population sizes]]
+//	Subpopulations 2 and 3 will be defined as fractions relative to N_effective (i.e. N1) --> see complex parameters
+1	N1	unif	300	50000   output
+1	N2	unif	300	50000   output
+1	N3	unif	300 50000   output
+//1   NA12  unif    300 50000   output
+//1   NA23  unif    300 50000   output
+
+// 	Migration rates 
+//	In msms, mi_j represents the fraction of subpopulation i that is made up of migrants from subpopulation j in forward time. Hence pastward we have the rate that a lineage moves from deme i to j as mi_j.
+0	log_m12	unif	-4	2.5 output
+0	log_m21	unif	-4	2.5 output
+0	log_m13	unif	-4	2.5 output
+0	log_m31	unif	-4	2.5 output
+0	log_m23	unif	-4	2.5 output
+0	log_m32	unif	-4	2.5 output
+
+//	Fixed parameters
+//	We define the mutation rate at a reasonable value (e.g. 1x10-8).
+0	mutation_rate	unif	0.00000001	0.00000001	output
+//	Here, we'll want to keep sequence length fixed (so that ABCtoolbox can conveniently vary theta for us) 
+1	sequence_length	unif	300	300	output
+//	Define the number of independent loci (iterations)
+1	no_loci unif	1000	1000	output
+// Define generation time (stick to 1, can always be multiplied up later)
+1	t_gen   unif    1   1   output
+
+
+[RULES]
+TJ12 < TJ23
+
+// E.g. continent population sizes should be larger than island population sizes
+
+[COMPLEX PARAMETERS]
+
+//	Various
+// Set theta (maximum = 4*50000*10e-8*300=6, minumum=4*300*10e-8*300=0.036)
+//  OLD  0	theta = (4 * 10000 * mutation_rate * sequence_length)	output
+0   theta = (4 * N1 * mutation_rate * sequence_length)  output
+
+// We output population size as absolute rather than ratio.
+0	fraction_N2 = (N2 * 4 * mutation_rate * sequence_length / theta)    output
+0	fraction_N3 = (N3 * 4 * mutation_rate * sequence_length / theta)    output
+//0	fraction_NA12 = (NA12 * 4 * mutation_rate * sequence_length / theta)    output
+//0	fraction_NA23 = (NA23 * 4 * mutation_rate * sequence_length / theta)    output
+
+// Determine scaled merge times
+0   tj12 = (TJ12/t_gen)/(4*N1)  output
+0   tj23 = (TJ23/t_gen)/(4*N1)  output
+
+// Back-transform migration rates
+0	m12 = pow10(log_m12) output
+0	m21 = pow10(log_m21) output
+0	m13 = pow10(log_m13) output
+0	m31 = pow10(log_m31) output
+0	m23 = pow10(log_m23) output
+0	m32 = pow10(log_m32) output

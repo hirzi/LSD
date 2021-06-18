@@ -1,0 +1,48 @@
+//	ABCtoolbox input file
+//	*********************
+
+// To set up ABCtoolbox to perform simulations
+task	simulate
+
+// Define the type of sampler to be used (standard, MCMC or PMC)
+samplerType	standard
+// samplerType	MCMC
+
+// Define .est file, which defines the priors
+estName	/scratch/mskset001/novogene/LSD/SIMULATE_3pop_realDepths/ABCSampler_3pop_multilocus_better.priors
+
+// Define the file which contains the observed sumstats. This must be in the same form as the simulated sumstats output
+obsName	/scratch/mskset001/novogene/LSD/FULL_3pop_small_test3_unfolded_nevilleiAncestral_allThetas/TEST_LSD_low_OBS_3pop_unfolded_allThetas.txt
+
+//	Output file name
+outName	simulatedSumStats_3pop_MYNAME
+
+//	Number of simulations to perform
+numSims	2500
+
+//	Name of the simulation program. Must be an executable.
+simProgram	/home/mskset001/msms/bin/msms
+
+//	This is the msms command line we use
+//	We replace parameter (argument) values with tags defined in .est file, and define under simArgs (removing "msms")
+// define full 3pop migration matrix as such: -ma x m12 m13 m21 x m23 m31 m32 x
+//simArgs 50 no_loci -t theta -I 3 24 12 141 -N -n 2 fraction_N2 -n 3 fraction_N3 -ma x m12 m13 m21 x m23 m31 m32 x -ej tj12 1 2 -ej tj23 2 3 -en tj23 3 fraction_NA23 -en tj12 3 fraction_NA12
+simArgs 50 no_loci -t theta -I 3 24 12 14 -n 2 fraction_N2 -n 3 fraction_N3 -ma x m12 m13 m21 x m23 m31 m32 x -ej tj12 1 2 -ej tj23 2 3
+
+//	This redirects the standard output to a file
+simOutputRedirection SIMDATANAME
+
+//	Name of the program calculating summary statistic
+sumStatProgram	/scratch/mskset001/novogene/LSD/SIMULATE_3pop_realDepths/lsd_low_3pop_multilocus.sh
+
+//	Arguments to be passed to the program calculating summary statistics.
+sumStatArgs	-f SIMDATANAME -p 12,6,7 -l 300 -D /scratch/mskset001/novogene/LSD/SIMULATE_3pop_realDepths/samtools.sampleDepths -e 0.001 -r /scratch/mskset001/novogene/ReferenceBasedVarDetect/cerinthoides_bcftools/cerinthoides_k96_merged_deduped-scaffolds_minlen400.fa.fai -w . -o summary_stats_temp.txt
+
+//	this outputs a sumstats file with default name summary_stats-temp.txt. Let's rename the output to summary_stats_temp.txt:
+sumStatName summary_stats_temp.txt
+
+//	Verbose output
+verbose
+
+//	Define name of log file
+logFile	LOGFILE
