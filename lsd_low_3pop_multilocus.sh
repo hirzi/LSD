@@ -185,7 +185,8 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 		# angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
 		realSFS saf2theta ${working_dir}/pop${pop}.saf.idx -P 1 -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop} &> /dev/null
 		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
-		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx &> /dev/null
+		## do slidingwindow analysis with window and step both = sequence_length (i.e. each locus gets a separate estimate)
+		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx -win ${sequence_length} -step ${sequence_length} &> /dev/null
 	done
 	echo "All populations' thetas calculated!"
 
@@ -324,17 +325,45 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 	##### Collate results
 	echo "Collating results and generating final output..."
 
-	# Collate theta results
+	# # Collate theta results
+	# for pop in $(seq 1 ${no_pops}); do	
+	# 	pop_suffix=".pop${pop}"
+	# 	# For adding suffix, see: https://unix.stackexchange.com/questions/265335/adding-a-number-as-a-suffix-to-multiple-columns. For expanding variable in awk, use the -v option; see: https://unix.stackexchange.com/questions/340369/expanding-variables-in-awk. Tab separate fields via -v OFS='\t' (see: https://askubuntu.com/questions/231995/how-to-separate-fields-with-space-or-tab-in-awk)
+	# 	cat ${working_dir}/pop${pop}.thetas.idx.pestPG | head -n 1 | awk '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }' | awk -v OFS='\t' -v pop_suffix="$pop_suffix" '{$1 = $1 pop_suffix; $2 = $2 pop_suffix; $3 = $3 pop_suffix; $4 = $4 pop_suffix; $5 = $5 pop_suffix; $6 = $6 pop_suffix; $7 = $7 pop_suffix; $8 = $8 pop_suffix; $9 = $9 pop_suffix; $10 = $10 pop_suffix; print }' > ${working_dir}/pop${pop}.thetas.idx.headers
+	# 	# only one locus so tail=global estimates (if using >1 locus, need to first calculate means)
+	# 	cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk -v OFS='\t' '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }'  >> ${working_dir}/pop${pop}.thetas.idx.headers
+
+	# done
+	# paste ${working_dir}/pop*.thetas.idx.headers > ${working_dir}/thetas.results.concatenated
+
+
+	# Collate theta results (mean over n_loci sliding windows of sequence_length)
 	for pop in $(seq 1 ${no_pops}); do	
 		pop_suffix=".pop${pop}"
 		# For adding suffix, see: https://unix.stackexchange.com/questions/265335/adding-a-number-as-a-suffix-to-multiple-columns. For expanding variable in awk, use the -v option; see: https://unix.stackexchange.com/questions/340369/expanding-variables-in-awk. Tab separate fields via -v OFS='\t' (see: https://askubuntu.com/questions/231995/how-to-separate-fields-with-space-or-tab-in-awk)
 		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | head -n 1 | awk '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }' | awk -v OFS='\t' -v pop_suffix="$pop_suffix" '{$1 = $1 pop_suffix; $2 = $2 pop_suffix; $3 = $3 pop_suffix; $4 = $4 pop_suffix; $5 = $5 pop_suffix; $6 = $6 pop_suffix; $7 = $7 pop_suffix; $8 = $8 pop_suffix; $9 = $9 pop_suffix; $10 = $10 pop_suffix; print }' > ${working_dir}/pop${pop}.thetas.idx.headers
-		# only one locus so tail=global estimates (if using >1 locus, need to first calculate means)
-		cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk -v OFS='\t' '{ print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 }'  >> ${working_dir}/pop${pop}.thetas.idx.headers
-
+		# we need to get mean values across loci, whereas lsd_low only uses one (simulated) locus so tail is point estimates		
+		# cat ${working_dir}/pop${pop}.thetas.idx.pestPG | tail -n 1 | awk  -v OFS='\t' '{ print $4, $5, $9 }' >> ${working_dir}/pop${pop}.thetas.idx.headers
+		# theta estimators
+			# remove chromosomes with < min_sites sites (should also remove (-)Inf values of fuf, fud, fayh and zeng)
+		mean_tW=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $4 } END { if (NR > 0) print sum / NR }' )
+		mean_tP=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $5 } END { if (NR > 0) print sum / NR }' )
+		mean_tF=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $6 } END { if (NR > 0) print sum / NR }' )
+		mean_tH=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $7 } END { if (NR > 0) print sum / NR }' )
+		mean_tL=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $8 } END { if (NR > 0) print sum / NR }' )
+		# neutrality stats (all other than TajimaD occasionally [0.02% of the time] return NA results which need to be removed)
+		# just in case, report
+		num_na=$(grep 'nan' ${working_dir}/pop${pop}.thetas.idx.pestPG | wc -l)
+		num_scaff=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | wc -l)
+		echo "Looked for NA values in thetas: there are " ${num_na} "out of" ${num_scaff}
+		mean_TajimaD=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | awk -v OFS='\t' '{ sum += $9 } END { if (NR > 0) print sum / NR }' )
+		mean_FuF=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | grep -v 'inf' | awk -v OFS='\t' '{ sum += $10 } END { if (NR > 0) print sum / NR }' )
+		mean_FuD=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | grep -v 'inf' | awk -v OFS='\t' '{ sum += $11 } END { if (NR > 0) print sum / NR }' )
+		mean_FayH=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | grep -v 'inf' | awk -v OFS='\t' '{ sum += $12 } END { if (NR > 0) print sum / NR }' )
+		mean_ZengE=$(cat ${working_dir}/pop${pop}.thetas.idx.pestPG | grep -v 'nan' | grep -v 'inf' | awk -v OFS='\t' '{ sum += $13 } END { if (NR > 0) print sum / NR }' )
+		printf "$mean_tW\t$mean_tP\t$mean_tF\t$mean_tH\t$mean_tL\t$mean_TajimaD\t$mean_FuF\t$mean_FuD\t$mean_FayH\t$mean_ZengE" >> ${working_dir}/pop${pop}.thetas.idx.headers
 	done
 	paste ${working_dir}/pop*.thetas.idx.headers > ${working_dir}/thetas.results.concatenated
-
 	# Collate SFS results (here retaining just singleton and doubleton categories)
 	for pop in $(seq 1 ${no_pops}); do
 		echo -e "singletons.pop"${pop}'\t'"doubletons.pop"${pop} > ${working_dir}/pop${pop}.SFS.truncated.results

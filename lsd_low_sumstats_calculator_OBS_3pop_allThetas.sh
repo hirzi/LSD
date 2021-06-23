@@ -270,7 +270,7 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 			echo "Calculating PBS for population trio" 
 			realSFS fst index ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx ${working_dir}/${prefix}.${3}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -sfs ${working_dir}/${1}.${3}.ml -sfs ${working_dir}/${2}.${3}.ml -fstout ${working_dir}/${1}.${2}.${3}.stats -whichFst 1 -fold ${folded}
 			#get the global estimate (here we're interested in outputting the PBS results)
-			realSFS fst stats ${working_dir}/${1}.${2}.${3}.stats.fst.idx >> ${working_dir}/${1}.${2}.${3}.globalFST_PBS
+			realSFS fst stats ${working_dir}/${1}.${2}.${3}.stats.fst.idx > ${working_dir}/${1}.${2}.${3}.globalFST_PBS
 			echo
 			head -n1 ${working_dir}/${1}.${2}.${3}.globalFST_PBS | cut -f 2 >> ${working_dir}/${1}.${2}.globalFST
 			head -n2 ${working_dir}/${1}.${2}.${3}.globalFST_PBS | tail -n1 | cut -f 2 >> ${working_dir}/${1}.${3}.globalFST
