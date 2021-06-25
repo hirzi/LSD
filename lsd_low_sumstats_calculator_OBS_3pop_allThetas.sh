@@ -83,7 +83,7 @@ else
 fi
 
 if [ ! -d ${working_dir} ]; then
-	mkdir ${working_dir}
+	mkdir -p ${working_dir}
 fi
 
 if [ ! -f ${ancestral}.fai ];then
