@@ -327,31 +327,25 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 	done
 	paste ${working_dir}/pop*.thetas.idx.headers > ${working_dir}/thetas.results.concatenated
 
-	# Collate SFS results (here retaining just singleton (i.e. doubleton) and doubleton (i.e. tripleton) categories, i.e. skipping computed singletons due to unreliability)
+	# Collate SFS results (here retaining singleton, doubleton AND tripleton categories)
 	for pop in $(seq 1 ${no_pops}); do
-		echo -e "singletons.pop"${pop}'\t'"doubletons.pop"${pop} > ${working_dir}/pop${pop}.SFS.truncated.results
-		cat ${working_dir}/pop${pop}.sfs | awk -v OFS='\t' '{ print $2, $3 }' >> ${working_dir}/pop${pop}.SFS.truncated.results
+		echo -e "singletons.pop"${pop}'\t'"doubletons.pop"${pop}'\t'"tripletons.pop"${pop} > ${working_dir}/pop${pop}.SFS.truncated.results
+		cat ${working_dir}/pop${pop}.sfs | awk -v OFS='\t' '{ print $2, $3, $4 }' >> ${working_dir}/pop${pop}.SFS.truncated.results
 	done
 	paste ${working_dir}/pop*.SFS.truncated.results > ${working_dir}/SFS.truncated.results.concatenated
+
+	## collate D_tail
+	## calculate D_tail statistic https://onlinelibrary.wiley.com/doi/full/10.1111/eva.12998 
+	echo "calculating D_tail statistic"
+	for pop in $(seq 1 ${no_pops}); do
+		echo -e "D_tail.pop"${pop} > ${working_dir}/pop${pop}.D_tail.results
+		cat ${working_dir}/pop${pop}.sfs | awk -v OFS='\t' '{ dt = ($(NF-1)-$(NF-2)) / $(NF-2) } END { print dt }' >> ${working_dir}/pop${pop}.D_tail.results
+	done
+	paste ${working_dir}/pop*.D_tail.results > ${working_dir}/D_tail.results.concatenated
 
 	# Collate FST results
 	paste ${working_dir}/pop*.pop*.globalFST > ${working_dir}/fst.results.concatenated
 	
-	# # Collate PBS results
-	# tail -n+4 ${working_dir}/${1}.${2}.${3}.globalFST_PBS | \
-	# awk '{for (i=1; i<=NF; i++)  {
-    #     a[NR,i] = $i
-    # }} NF>p { p = NF }
-	# END {    
-    # for(j=1; j<=p; j++) {
-    #     str=a[1,j]
-    #     for(i=2; i<=NR; i++){
-    #         str=str" "a[i,j];
-    #     }
-    #     print str
-    # }
-	# 	}' | sed 's/ /\t/g' > ${working_dir}/PBS.results.concatenated
-
 	# # Concatenate all results (make sure all fields are tab-separated)
 	# paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}.txt
 	# # Check that number of fields match between headers and results
@@ -359,10 +353,10 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 	# Collate PBS results
 	if [ -f ${working_dir}/PBS.results.concatenated ];then
 		# Concatenate all results (make sure all fields are tab-separated)
-	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}
+	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/D_tail.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}
 	else
 		# Concatenate all results (make sure all fields are tab-separated)
-	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated > ${working_dir}/${output_name}
+	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/D_tail.results.concatenated ${working_dir}/fst.results.concatenated > ${working_dir}/${output_name}
 	fi
 	echo "Calculation of summary statistics has finished!"
 

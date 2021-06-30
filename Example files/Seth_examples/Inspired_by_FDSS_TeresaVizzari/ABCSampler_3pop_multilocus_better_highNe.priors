@@ -11,17 +11,17 @@
 
 //	#isInt? #name	#dist.#min	#max
 
-// Population merge times (in generations!!; below scale to theta) --- THIS IS WRONG. See ABCSampler_3pop_multilocus_better_highNe.priors
-1	TJ21	unif	10	15000	output	
-1	TJ31	unif	20	20000	output	
+// Population merge times (in years! Below scale to generations in units of 4Ne)
+1	TJ21	unif	2000	60000	output	
+1	TJ31	unif	2000	100000	output	
 
 //	Effective population sizes  (set minumum at around 300 inds)
 //	Subpopulations 2 and 3 will be defined as fractions relative to N_effective (i.e. N1) --> see complex parameters
-1	N1	unif	300	30000   output
-1	N2	unif	300	30000   output
-1	N3	unif	300	30000   output
-1	NA21	unif	300	30000	output
-1	NA31	unif	300	30000	output
+1	N1	unif	60000 180000   output
+0	fraction_N2	unif	0.5 1.5   output
+0	fraction_N3	unif	0.5 1.5   output
+0	fraction_NA21	unif	0.5 1.5	output
+0	fraction_NA31	unif	0.5 1.5	output
 
 // 	Migration rates 
 //	In msms, mi_j represents the fraction of subpopulation i that is made up of migrants from subpopulation j in forward time. Hence pastward we have the rate that a lineage moves from deme i to j as mi_j.
@@ -42,7 +42,6 @@
 // Define generation time (go with 4 as estimated time to first reproduction)
 1	t_gen	unif	4	4	output
 
-
 [RULES]
 TJ21 < TJ31
 
@@ -51,15 +50,9 @@ TJ21 < TJ31
 [COMPLEX PARAMETERS]
 
 //	Various
-// Set theta (maximum = 4*30000*1e-8*250=0.3, minumum=4*300*1e-8*250=0.003)
+// Set theta (maximum = 4*180000*1e-8*250=1.8, minumum=4*50000*1e-8*250=0.5)
 //  OLD  0	theta = (4 * 10000 * mutation_rate * sequence_length)	output
 0   theta = (4 * N1 * mutation_rate * sequence_length)  output
-
-// We output population size as absolute rather than ratio.
-0	fraction_N2 = (N2 * 4 * mutation_rate * sequence_length / theta)    output
-0	fraction_N3 = (N3 * 4 * mutation_rate * sequence_length / theta)    output
-0	fraction_NA21 = (NA21 * 4 * mutation_rate * sequence_length / theta)    output
-0	fraction_NA31 = (NA31 * 4 * mutation_rate * sequence_length / theta)    output
 
 // Determine scaled merge times
 0	tj21 = (TJ21/t_gen)/(4*N1)  output

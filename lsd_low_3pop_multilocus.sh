@@ -190,28 +190,6 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 	done
 	echo "All populations' thetas calculated!"
 
-
-	# ##### Calculate pairwise population summary statistics (ANGSD)
-	# echo "Preparing calculation of pairwise statistics..."
-	# for pop in $(seq 1 ${num_pairs}); do
-	# 	pop_pair=`sed -n ${pop}p < ${working_dir}/pop_name_pairs`
-	# 	echo "Processing population pair" $pop_pair
-	# 	# Remember, set allows you to define the elements of your list as variables, according to their order
-	# 	set -- $pop_pair
-	# 	# Calculate the 2DSFS prior
-	# 	echo "Calculating 2D SFS for population pair" $pop_pair	
-	# 	realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P 1 > ${working_dir}/${1}.${2}.ml
-	# 	# Calculate the FST
-	# 	echo "Calculating FST for population pair" $pop_pair
-	# 	realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1
-	# 	# Get the global estimate (here we output only the weighted estimate)
-	# 	echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.globalFST
-	# 	realSFS fst stats ${working_dir}/${1}.${2}.stats.fst.idx 2> /dev/null | cut -f 2 >> ${working_dir}/${1}.${2}.globalFST
-	# 	# Get sliding window estimates
-	# 	#realSFS fst stats2 ${working_dir}/${1}.${2}.stats.fst.idx -win 500 -step 500 > ${OUT}/FST_results/slidingwindow_${1}.${2}
-	# done
-	# echo "All populations' FSTs calculated!"
-
 	echo "Preparing calculation of pairwise statistics..."
 		for pop in $(seq 1 ${num_pairs}); do
 			pop_pair=`sed -n ${pop}p < ${working_dir}/pop_name_pairs`
@@ -364,20 +342,28 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 		printf "$mean_tW\t$mean_tP\t$mean_tF\t$mean_tH\t$mean_tL\t$mean_TajimaD\t$mean_FuF\t$mean_FuD\t$mean_FayH\t$mean_ZengE" >> ${working_dir}/pop${pop}.thetas.idx.headers
 	done
 	paste ${working_dir}/pop*.thetas.idx.headers > ${working_dir}/thetas.results.concatenated
-	# Collate SFS results (here retaining just singleton and doubleton categories)
+	
+	# Collate SFS results (here retaining singleton, doubleton AND tripleton categories; also only output their normalised values!)
 	for pop in $(seq 1 ${no_pops}); do
-		echo -e "singletons.pop"${pop}'\t'"doubletons.pop"${pop} > ${working_dir}/pop${pop}.SFS.truncated.results
-		## get NORMALISED (i.e. xi/sum(x)) values (ignoring singletons) (https://www.unix.com/shell-programming-and-scripting/131891-sum-all-rows-awk-one-liner.html)
-		cat ${working_dir}/pop${pop}.sfs | cut -d' ' -f2- | awk -v OFS='\t' '{ for(i=1; i<=NF;i++) j+=$i; print $1/j, $2/j }' >> ${working_dir}/pop${pop}.SFS.truncated.results
+		echo -e "singletons.pop"${pop}'\t'"doubletons.pop"${pop}'\t'"tripletons.pop"${pop} > ${working_dir}/pop${pop}.SFS.truncated.results
+		## get NORMALISED (i.e. xi/sum(x)) values (NOT ignoring singletons: first entry in SFS is zerotons i.e. invariant sites) (https://www.unix.com/shell-programming-and-scripting/131891-sum-all-rows-awk-one-liner.html)
+		cat ${working_dir}/pop${pop}.sfs | cut -d' ' -f2- | awk -v OFS='\t' '{ for(i=1; i<=NF;i++) j+=$i; print $1/j, $2/j, $3/j }' >> ${working_dir}/pop${pop}.SFS.truncated.results
 		## catch zero sum SFSs (ignoring singletons ofc)
 		if [ $(cat ${working_dir}/pop${pop}.SFS.truncated.results | wc -l) -eq 1 ];then
 		echo "zero sum SFS for pop" ${pop}
 		mv ${working_dir}/pop${pop}.SFS.truncated.results ${working_dir}/pop${pop}.temp.sfs.zerosum
-			printf "0\t0\n" | cat ${working_dir}/pop${pop}.temp.sfs.zerosum - > ${working_dir}/pop${pop}.SFS.truncated.results
+			printf "0\t0\t0\n" | cat ${working_dir}/pop${pop}.temp.sfs.zerosum - > ${working_dir}/pop${pop}.SFS.truncated.results
 		fi
-		# cat ${working_dir}/pop${pop}.sfs | awk -v OFS='\t' '{ print $2, $3 }' >> ${working_dir}/pop${pop}.SFS.truncated.results
 	done
 	paste ${working_dir}/pop*.SFS.truncated.results > ${working_dir}/SFS.truncated.results.concatenated
+
+	## calculate D_tail statistic https://onlinelibrary.wiley.com/doi/full/10.1111/eva.12998 
+	echo "calculating D_tail statistic"
+	for pop in $(seq 1 ${no_pops}); do
+		echo -e "D_tail.pop"${pop} > ${working_dir}/pop${pop}.D_tail.results
+		cat ${working_dir}/pop${pop}.sfs | awk -v OFS='\t' '{ dt = ($(NF-1)-$(NF-2)) / $(NF-2) } END { print dt }' >> ${working_dir}/pop${pop}.D_tail.results
+	done
+	paste ${working_dir}/pop*.D_tail.results > ${working_dir}/D_tail.results.concatenated
 
 	# Collate FST results
 	paste ${working_dir}/pop*.pop*.globalFST > ${working_dir}/fst.results.concatenated
@@ -385,10 +371,10 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 	# Collate PBS results
 	if [[ ${no_pops} = 3 ]]; then
 		# Concatenate all results (make sure all fields are tab-separated)
-	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}
+	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/D_tail.results.concatenated ${working_dir}/fst.results.concatenated ${working_dir}/PBS.results.concatenated > ${working_dir}/${output_name}
 	else
 		# Concatenate all results (make sure all fields are tab-separated)
-	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/fst.results.concatenated > ${working_dir}/${output_name}
+	paste ${working_dir}/thetas.results.concatenated ${working_dir}/SFS.truncated.results.concatenated ${working_dir}/D_tail.results.concatenated ${working_dir}/fst.results.concatenated > ${working_dir}/${output_name}
 	fi
 
 
