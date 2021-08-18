@@ -224,11 +224,11 @@ num_pairs=$(cat ${working_dir}/pop_name_pairs | wc -l)
 			echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.globalFST
 			# Calculate the 2DSFS prior
 			echo "Calculating 2D SFS for population pair" $pop_pair	
-			realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -P ${threads} -fold ${folded} 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${2}.ml
+			realSFS ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -P ${threads} -fold ${folded} -maxIter 1000 2> ${working_dir}/${1}.${2}.ml.log > ${working_dir}/${1}.${2}.ml
 			if [[ ! ${no_pops} = 3 ]]; then
 				echo "there are" ${no_pops} "populations, won't do PBS"
 				# Calculate the FST
-				 echo "Calculating FST for population pair" $pop_pair
+				 echo "Calculating and FST for population pair" $pop_pair
 				realSFS fst index ${working_dir}/${prefix}.${1}.saf.idx ${working_dir}/${prefix}.${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1 -fold ${folded}
 				# Get the global estimate (here we output only the weighted estimate)
 				realSFS fst stats ${working_dir}/${1}.${2}.stats.fst.idx 2> ${working_dir}/${1}.${2}.globalFST.log | cut -f 2 >> ${working_dir}/${1}.${2}.globalFST

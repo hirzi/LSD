@@ -21,7 +21,7 @@ module load gcc/4.9.2 gdc angsd/0.925
 
 
 ##### Parse input arguments
-while getopts f:p:l:d:D:e:r:w:o: option
+while getopts f:p:l:d:D:e:r:w:o:t: option
 do
 case "${option}"
 in
@@ -34,6 +34,7 @@ e) error_rate=$OPTARG;;
 r) REF_index=$OPTARG;;
 w) working_dir=$OPTARG;;
 o) output_name=$OPTARG;;
+t) threads=${OPTARG};;
 esac
 done
 
@@ -175,16 +176,16 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 		splitgl ${working_dir}/${prefix}.gl.glf.gz ${no_inds_total} ${start} ${end} 2> /dev/null > ${working_dir}/pop${pop}.glf.gz 
 		# Calculate the site allele frequency likelihoods (doSaf)
 		echo "Calculating SAF for population" $pop
-		angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -isSim 1 -P 1 -fai ${REF_index} -out ${working_dir}/pop${pop} &> /dev/null
-		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -isSim 1 -P 1 -fai ${REF_index} -out ${working_dir}/pop${pop}
+		angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -isSim 1 -P ${threads} -fai ${REF_index} -out ${working_dir}/pop${pop} &> /dev/null
+		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -isSim 1 -P ${threads} -fai ${REF_index} -out ${working_dir}/pop${pop}
 		# Calculate the SFS (for use as prior in calculation of thetas)
 		echo "Calculating SFS for population" $pop
-		realSFS ${working_dir}/pop${pop}.saf.idx -P 1 2> /dev/null > ${working_dir}/pop${pop}.sfs 
+		realSFS ${working_dir}/pop${pop}.saf.idx -P ${threads} 2> /dev/null > ${working_dir}/pop${pop}.sfs 
 		# Calculate the site allele frequency likelihoods (doSaf)
 		echo "Calculating thetas for population" $pop	
-		# angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
-		realSFS saf2theta ${working_dir}/pop${pop}.saf.idx -P 1 -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop} &> /dev/null
-		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -doThetas 1 -isSim 1 -P 1 -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
+		# angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doThetas 1 -isSim 1 -P ${threads} -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
+		realSFS saf2theta ${working_dir}/pop${pop}.saf.idx -P ${threads} -sfs ${working_dir}/pop${pop}.sfs -outname ${working_dir}/pop${pop} &> /dev/null
+		#angsd -glf ${working_dir}/pop${pop}.glf.gz -nInd ${no_inds_per_pop} -doSaf 1 -doMajorMinor 1 -doMaf 1 -doThetas 1 -isSim 1 -P ${threads} -pest ${working_dir}/pop${pop}.sfs -fai ${REF_index} -out ${working_dir}/pop${pop}
 		## do slidingwindow analysis with window and step both = sequence_length (i.e. each locus gets a separate estimate)
 		thetaStat do_stat ${working_dir}/pop${pop}.thetas.idx -win ${sequence_length} -step ${sequence_length} &> /dev/null
 	done
@@ -199,12 +200,12 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 			echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.globalFST
 			# Calculate the 2DSFS prior
 			echo "Calculating 2D SFS for population pair" $pop_pair	
-			realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P 1 2> /dev/null > ${working_dir}/${1}.${2}.ml 
+			realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P ${threads} 2> /dev/null > ${working_dir}/${1}.${2}.ml 
 			if [[ ! ${no_pops} = 3 ]]; then
 				echo "there are not 3 but" ${no_pops} "populations, won't do PBS"
 				# Calculate the FST
 				 echo "Calculating FST for population pair" $pop_pair
-				realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1 &> /dev/null
+				realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1 -P ${threads} &> /dev/null
 				# Get the global estimate (here we output only the weighted estimate)
 				realSFS fst stats ${working_dir}/${1}.${2}.stats.fst.idx 2> /dev/null | cut -f 2 >> ${working_dir}/${1}.${2}.globalFST
 				# Get sliding window estimates
@@ -271,12 +272,12 @@ elif [ "$num_segsites" -ge 1 ] && [ "$num_segsites" -lt "$sequence_length" ]; th
 			set -- $pop_trio
 			## calculate 2DSFS priors
 			# echo "calculating 2DSFS for every pair"
-			# realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P 1  2> /dev/null > ${working_dir}/${1}.${2}.ml
-			# realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${3}.saf.idx -P 1  2> /dev/null > ${working_dir}/${1}.${3}.ml
-			# realSFS ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -P 1  2> /dev/null > ${working_dir}/${2}.${3}.ml
+			# realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -P ${threads}  2> /dev/null > ${working_dir}/${1}.${2}.ml
+			# realSFS ${working_dir}/${1}.saf.idx ${working_dir}/${3}.saf.idx -P ${threads}  2> /dev/null > ${working_dir}/${1}.${3}.ml
+			# realSFS ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -P ${threads}  2> /dev/null > ${working_dir}/${2}.${3}.ml
 			##calculate pbs and fst
 			echo "Calculating pairwise FSTs and PBS for population trio" 
-			realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -sfs ${working_dir}/${1}.${3}.ml -sfs ${working_dir}/${2}.${3}.ml -fstout ${working_dir}/${1}.${2}.${3}.stats -whichFst 1 &> /dev/null
+			realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx ${working_dir}/${3}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -sfs ${working_dir}/${1}.${3}.ml -sfs ${working_dir}/${2}.${3}.ml -fstout ${working_dir}/${1}.${2}.${3}.stats -whichFst 1 -P ${threads} &> /dev/null
 			#get the global estimate
 			realSFS fst stats ${working_dir}/${1}.${2}.${3}.stats.fst.idx > ${working_dir}/${1}.${2}.${3}.globalFST_PBS
 			echo "All pairwise FSTs and PBS for population trio calculated!"
