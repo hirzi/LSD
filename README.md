@@ -519,7 +519,7 @@ Example whole-genome plot:
 
 # Citation
 
-Hirzi Luqman, Alex Widmer, Simone Fior, Daniel Wegmann; bioRxiv 2020.07.20.211581; doi: https://doi.org/10.1101/2020.07.20.211581
+Luqman, H., Widmer, A., Fior, S., & Wegmann, D. (2021). Identifying loci under selection via explicit demographic models. Molecular Ecology Resources. http://dx.doi.org/10.1111/1755-0998.13415
 
 ===================================================================
 
