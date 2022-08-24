@@ -1,305 +1,524 @@
-# Workshop 4 - Population structure and demography of low-coverage whole genome sequencing data
-
-Why go low?
+# Identifying Loci under Selection via explicit Demographic models (LSD)
 
 
-Experimental design.
-All scientific lines of inquiry start with a question. From this question, the researcher comes up with an experimental design that can best address said question. If money and time were no object, the researcher would e.g. plan for an experiment with 10 treatments, 10 replicates per treatment, and 1000 samples per replicate. However, in the real world, the experimental design is not determined purely by how best to address the biological question at hand, but also by cost, time and technical feasibility.
+  This repository contains a suite of scripts for performing LSD genome scans based on explicit demographic models (Luqman et al. 2021, https://onlinelibrary.wiley.com/doi/10.1111/1755-0998.13415). The current implementation estimates demographic parameters via an Approximate Bayesian Computation (ABC) framework, and works in two steps. First, neutral demographic parameters are estimated (see: **Requirements for LSD**). Second, per-locus parameter estimates (e.g. for a sliding window across the chromosome) are compared to the neutral estimates, to identify selected loci. 
 
-Pic
+  As LSD is an ABC approach, it relies on simulations to estimate the posterior distribution of model parameters. The current implementation takes ms-format coalescent samples as input for simulated data and mpileup format (e.g. from BAM files) as input for observed data. A large range of modern coalescent simulators (or those that approximate the coalescent) output ms-format data including e.g. ms (Hudson, 2002), msHOT (Hellenthal & Stephens, 2007), msms (Ewing & Hermisson, 2010), msprime (Kelleher & Etheridge, 2015), MaCS (Chen, Marjoram, & Wall, 2009), cosi2 (Shlyakhter et al., 2014) and SCRM (Staab et al., 2015). 
 
-Generally, one is faced with the following trade-off; of having either 1) more samples at the expense of data per sample or 2) less samples but with more data per sample.
+  The processing, format and final output of observed genetic data will often differ from that of raw coalescent simulations, given that observed genetic data may be subject to various pre-sequencing (e.g. pooling), sequencing (e.g. sequencing errors, stochastic sampling of reads) and post-sequencing (e.g. filters) events that perturb and reformat the data from the original source. We thus provide programs that interface with coalescent simulators to replicate observed sequencing pipelines and generate simulated sequencing data. LSD-High can accommodate and simulate both individual and pooled data and assumes mid to high coverage (>10x) data, while LSD-Low accepts individual data and can additionally accommodate low coverage (>2x) data by utilising genotype likelihoods via msToGLF and ANGSD (Korneliussen, Albrechtsen, & Nielsen, 2014). These programs then calculate a suite of summary statistics for the simulated and observed data. Summary statistics currently implemented include the number of segregating sites (S), private S, nucleotide diversity (pi), Watterson’s theta estimator, Tajima’s D, relative divergence (FST), absolute divergence (DXY), and site frequencies, though in principle any summary statistic can be included with appropriate additions or modifications to the programs’ scripts. 
 
-With respect to  genetics and sequencing, if we start with the perfect or complete representation of a unit data as the whole genome sequenced at high coverage (e.g. 50x), less data can imply 1 of two things: 1) sequencing a reduced or sub- representation of the genome, i.e. using genetic markers like microsats and SNPs or 2) sequencing the whole genome but at low coverage. I.e. a trade-off of breadth vs depth. To give a concrete example, imagine you had enough money to sequence 1 million reads, and that this is sufficient to sequence your whole genome at 2x or 10% of your genome at 20X, which would you choose? 
+  ABC is currently implemented via ABCtoolbox (Wegmann et al., 2010). LSD-Scan takes the output of the ABC parameter estimates and estimates the departure of the inferred posteriors from neutral expectations. If conditioning the detection of selected (and linked) loci on multiple (joint) parameters, LSD also outputs the directionality of the deviation in the joint posterior with respect to the marginal parameters, and represents these as colours in the genome scan Manhattan plot.
 
-Pic
+  We note that LSD is NOT a program, rather it is an analytical framework for identifying loci under selection via deviations in demographic parameters. As such, it is not constrained to any particular program. Rather, we envision a custom and modular implementation that may interface with any appropriate combination of coalescent simulator, summary statistics calculator and ABC program. Here, we simply propose an example implementation utilising msms, LSD-High/Low and ABCtoolbox. As currently implemented, LSD takes whole genome sequence (WGS) data and conditions the inference of selection on genomic windows (regions).
 
-The answer can be difficult, and lies in weighing the respective advantages and disadvantages of these 2 alternatives, in the context of the biological question at hand.
-Briefly, both approaches have their caveats. For the former (i.e. genetic markers), you make the assumption that your sub-selection of the genome is representative of the whole genome, you are prone to ascertainment bias, and you lack data in unsequenced parts of the genome, hence making it inappropriate for e.g. when looking for new genetic variants. For the latter (low-coverage), you’re certainty in the genotype call (whether something is A,C,T,G) is much lower, due to the fact that you’re reading each position fewer times, and hence you’re prone to more sequencing errors in your genotype calls.
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/ABC_demography_pipeline_general_landscape3.png" width="800"> 
 
-That said, in the last years for both cases, there has been notable advances in alleviating these respective downsides. For the former, we’ve steadily been developing techniques which provide more and more markers, while for the latter, we now have methods that explicitly accommodate the uncertainty in genotype calls in our analysis, or put another way, we don’t have to explicitly call genotypes but rather we can consider their genotype likelihoods instead (aka the probability of the data given a specific genotype).
+# Requirements for LSD
 
-Low-coverage methods also lend themselves well to the sequencing and analysis of ancient DNA, where high-coverage, high-quality DNA sequences may not be easily attainable.
+  Firstly, a demographic model needs to be defined. Definition and choice of the demographic model should i) be informed by knowledge of the study system, ii) be motivated by the model’s capacity to provide a useful approximation of a biological process of interest, and iii) be sufficiently simple to remain computationally tractable. Additionally, given that we condition the inference of selection on demographic parameters, the model should be formulated according to whether deviation in N<sub>E</sub> or M<sub>E</sub> is desired for the inference of selection. Finally, the model should be able to sufficiently describe the neutral genetic variation of the system. This can be validated by demonstrating that the observed data can be accurately and sufficiently captured by the simulated data (e.g. in terms of summary statistics).
 
-To be concise, it is the statistic propagation of uncertainty from raw sequenving data to downstream analysis (via working with genotyp likelihoods rather than discrete (lossy) genotype calls) that make low-coverage methods useful. The effect may be huge at low coverage or minimal/negligable at high coverage (where results will tend to converge to classical genotype-call based methods). By working directly with genotype likelihoods, less lossy) steps (e.g. genotype calling, various filtering) need to be performed, leading to less loss of potentially informative data.
-
-# Workshop 4 (morning session) goals.
-
-<br> <br>
-
-In this session you will learn how to use low-coverage whole genome data
-to do:
-
-  - Principal Components Analysis (PCA)
-  - Admixture analysis
-
-# Initial preparation
-
-Population genetic analyses of NGS data is typically run on large linux-based computing clusters. For this workshop, since we don't have access to this, we will be running/performing population genetic analyses in Docker. 
-
-## What is Docker?
-Docker is an open source container based technology that runs in an isolated, self-contained package that can be efficiently distributed and executed in a portable manner across a wide range of computing platforms. Containerization in concept is very similar to virtualization, i.e. a method of isolating an application from the underlying machine operating system. The difference between virtual machines and containers is that containers do not require a full operating system to operate but rather the application and dependencies, means they are much smaller in size (Gharib 2018). 
-
-## 1. Make sure you have Docker Desktop installed on your computer
-Instructions for intalling Docker can be found [here](https://www.docker.com/get-started/), with links (including minimum system requirements) for [Windows](https://docs.docker.com/desktop/install/windows-install/), [Mac](https://docs.docker.com/desktop/install/mac-install/) and [Linux](https://docs.docker.com/desktop/linux/).
-
-## 2. Make sure you are familiar with the basics of bash shell scripting
-We will be working almost exclusively through the command line in docker, so if you have not used shell scripting before or are getting rusty on it, it may be helpful to have a look at a tutorial like [this one](https://linuxconfig.org/bash-scripting-tutorial-for-beginners) or a cheat sheet like [this one](https://bioinformaticsworkbook.org/Appendix/Unix/UnixCheatSheet.html#gsc.tab=0) before proceeding to the next step.
-
-# Workshop data
-
-We will be working with low-coverage NGS date (average 2x) of a plant species Dianthus sylvetris (Wood pink). This is a perennial plant species that grows throughout the mountain ranges of Europe (Alps, Apennines, Dinarides). Because the European mountain ranges experienced repeated bouts expansion and recession of glacial ice sheets during the last ca. 2 million years (the Quaternary glaciations or "ice ages"), this species likely experienced a complex demographic history. Additionally, the species inhabits a large elevational range (0-2500m), with the consequence that contemporary populations exhibit a remarkable degree of local adaptation in phenotypic and life history traits. We are interested to investigate the genetic bases of these observed adaptations.
-
-The populations and data that we will use in this workshop represents a small subset from a larger study that covered the geograpihc and ecologcal range of the species (https://www.biorxiv.org/content/10.1101/2022.06.07.495159v1). Our NGS data is in BAM format (i.e. mapped sequencing data) and span a ~2MB region from 4 scaffolds selected at random across genome. (may want to extract an interesting region for FST/PBS analysis, 15 inds pops. alternatively, consider taking data directly from Simons's data and do FST scans. Oruse selscan on vcf). We will use this data to interogate this species' population structure via principle component analysis (PCA) and admixtre/ancestry analysis.
+  To estimate neutral demographic parameters in the first step, we need an a priori set of regions that we believe reflect neutral evolution. Such a set may be informed by the particular structural or functional class the sites belong to and may e.g. consist of genomic regions not linked to structural annotations. Alternatively, given that LSD is very robust to mis-specification of the neutral set, we may rely on the whole genome or a random subset of the genome to reflect neutral diversity.
+  
+  LSD, as currently implemented (based on ABC), is computationally demanding and requires a fair amount of computing resources. This currently limits its use to those with access to computer clusters. 
 
 
-# Programs
-For this practical, we will be using:
-[SAMtools](https://www.htslib.org/),
-[ANGSD](http://popgen.dk/wiki/index.php/ANGSD) (Analysis of Next
-Generation Sequencing Data),
-[ngsAdmix](http://www.popgen.dk/software/index.php/NgsAdmix) and
-[PCAngsd](http://www.popgen.dk/software/index.php/PCAngsd).
-We will run the programs in a Docker container so there is no need to install these programs locally on your computer.
 
-# Instructions - preparing our Docker containers
+# Installation
 
-## Step 1. Open Docker
-First, open Docker Desktop on your computer. Then, open Windows Terminal (Powershell), Mac Terminal or Linux terminal. If Docker has ben succesfully installed, you should see the Docker help menu after typing "docker" in the terminal. Docker itself has a whole syntax for usage ([Docker manual](https://docs.docker.com/engine/reference/commandline/docker/), but today we will focus more on the bash-based command-lines as that is what is mainly used to work with NGS data (again here Docker is only used as container to run NGS programs without installing them locally).
+As currently implemented, LSD interfaces with ms-output format coalescent simulators and ABCtoolbox. In this example, we’ll use msms as the coalescent simulator, though any of the previously described simulators may work.
+ 
+msms is available for download at: https://www.mabs.at/ewing/msms/download.shtml
 
-## Step 2. Running Ubuntu on Docker
-We first need a Linux distribution (e.g. Ubuntu) running in our Docker container. Use "docker pull" to pull a Docker image or repository from a registry. 
+msms follows ms syntax. The authors of the program have written a convenient accessory program called ‘PopPlanner’ that facilitates visualizing ms and msms command lines into demographic models: https://www.mabs.at/ewing/msms/popplanner.shtml
+ 
+ABCtoolbox is available for download at: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Home
 
-	docker pull ubuntu
+LSD accessory scripts are coded in Python 3 (https://www.python.org/downloads/) and R (available at https://www.r-project.org/).
 
-This will pull the latest version of Ubuntu to Docker.
+Other programs that may be needed include SAMtools (http://www.htslib.org/download/) for manipulating observed data (SAM/BAM files) and ANGSD (http://www.popgen.dk/angsd/index.php/Installation) for handling low-coverage data (via genotype likelihoods) in LSD-Low.
 
-To run Ubuntu, we use "docker run"
 
-	docker run -it --rm ubuntu
 
-The -it instructs Docker to allocate a pseudo-TTY connected to the container’s stdin; creating an interactive bash shell in the container. I.e. this allows us to run Ubuntu interactively in Docker. --rm automatically remove the container when it exits. To exit the bash interactive shell, enter: exit 13.
+# Instructions
 
-## Step 3. Pull Docker images
+##  i) Define model
 
-Let's now "pull" Docker images for the other programs we will be using.
+The first step in LSD is to formulate a demographic model and conceptualise on which demographic parameters to condition the inference of selection on, based on theory and biological knowledge of the system under investigation (see: **Requirements for LSD**). For multi-population and more complex systems, this may entail the process of model selection, where competing models are evaluated and compared. This can be performed under the same ABC framework as LSD (see: https://bitbucket.org/wegmannlab/abctoolbox/wiki/Model%20Choice) or alternatively performed *a priori* or independently via e.g. dadi (Gutenkunst et al. 2009), Moments (Jouganous et al. 2017), fastsimcoal2 (Excoffier et al. 2013) or other demographic inference programs.
 
-	docker pull biocontainers/samtools:v1.9-4-deb_cv1
-	docker pull zjnolen/angsd
-	docker pull didillysquat/pcangsd
+One may even consider the possibility of modelling the same system in different ways, to acquire inferences of different biological processes. For instance, assume we have a system comprising two contrasting environments of 3 populations each, and that populations within the same environment are more closely related to each other than they are between environments. Such a system may be modelled completely (i.e. with all populations represented in the demographic model) via an island-continent model, with the 3 populations structured as 'islands' connected via migration to meta-population 'continents' (that reflect the distinct environments), and reciprocal migration between continents. Conditioning the inference of selection on deviations in between-continent effective migration rates is informative on signals between environments, and would detect common loci underlying adaptation to the environments. Alternatively, we may choose to focus on local adaptations specific to a pair. In this case, we may simply model a 2-population IM model comprising a sub-set pair of populations, assuming of course that this simple model can capture the observed data (of the pair) accurately and sufficiently (see: **v) Validation of simulations**). 
 
-## Step 4. Creating and mounting a volume
-We have now "pulled" the necessary programs into Docker. We now need the data. First we'll need to create a volume in Docker to store downloaded and generated data. Here, we will run an Ubuntu container with a named volume via the --mount argument (i.e. we will name this created volume "myvol" and define the associated container path as "/data". The -w allows the command to be executed inside the defined working directory. Before we download data, we will first need to install some other programs within the running container, namely git. 
+Once we have defined a model, we prepare the data needed for the LSD scan. Being reliant on ABC for parameter estimation, LSD requires summary statistics to be calculated for 1) the observed sequenced data and 2) simulated data. 
 
-	docker run --name base --mount source=myvol,target=/data -w /data -it --rm ubuntu
-	apt update
-	apt install git
+##  ii) Calculate summary statistics for observed data
+Mapped sequenced data are generally held in BAM format. We thus assume this to be the starting point for most users. LSD however requires as input mpileup format files. To convert BAM to mpileup format:
 
-While we're at it, let's install a text editor too (vim nano).
+	samtools mpileup prefix.bam > prefix.mpileup
 
-	apt-get install vim nano
+As LSD works in two-steps and first requires a set of putatively neutral regions, we do this for whole-genome BAMs as well for neutral region BAMs. The latter can be produced by extracting a putative set of neutral regions (e.g. all sites outside the structural annotation, ideally with a conservative flanking buffer) from the whole genome BAMs. In case this is not possible (e.g. due to scarce prior knowledge or limited genomic resources), we can also rely on the whole genome BAMs to reflect neutral diversity. 
 
-## Step 5. Download data
-Then we download data. All the BAM files as well as population metadata are deposited in the github: https://github.com/hirzi/Workshop (make public!). Let's pull this directory to our Docker container and our named volume.
+We do this for all individuals or pooled populations of interest. Once we have a list of mpileup files, we write a text file containing the list of these mpileup files. It is important to make sure that the order of the files in this text file (i.e. the order of individuals and populations) **is consistent** with that in the subsequent simulated models (i.e. in the ms/msms commands).
 
-	git clone https://github.com/hirzi/Workshop.git
+Once we have this text file (containing the list of ordered mpileup files), we can calculate the observed summary statistics for the whole system in one go.
 
-Once downloaded, let's navigate to the /data directory containing the samples. Once there and before we continue, let's download the reference sequence. The reference is deposited in a separate repository (because it's large file).
+For the neutral regions (1st step), this list of files will comprise mpileup files of extracted neutral or genome-wide regions e.g.:
 
-	wget https://www.dropbox.com/s/1nggjjhrcjseuwx/assembly_homozygous.fa?dl=1
+	python lsd_high_sumstats_calculator_OBS.py extractedNeutralRegions_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel_observedNeutralSumStats -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 –pooled
 
-Let's rename this reference sequence file.
+For the genome scan (2nd step), we supply a list of whole-genome (or chromosome or region) mpileup files, and may add an additional argument (--windowStep 1000) should we wish to modulate the step-size of the sliding window e.g.:
+
+	python lsd_high_sumstats_calculator_OBS.py genomes_filelist.txt -d 40 -d 40 -q 0 -m 2 -o 2popModel_observedSumStats -f ABC -r single --startPos 1 --endPos 99999 --mindepth 10 --maxdepth 500 --windowSize 5000 --windowStep 1000 –pooled
+
+In these commands, we will apply the same filtering regime as in the simulated data.
+
+For more information on the available options, you can run:
+
+	python lsd_high_sumstats_calculator_OBS.py -h
+
+To calculate observed summary statistics under low-coverage, we use ANGSD. A convenient wrapper function for this is not written yet, but one can modify lsd_low.sh for use with observed data, to ensure that the calculation of same set of summary statistics and formatting of the output file (NEED TO UPDATE).
+
+##  iii) Generate simulated data
+
+   ###	a) Generating coalescent simulations
+   
+   We first generate coalescent samples under a defined demographic model (see LSD requirements (1). E.g. let us assume we have 2 populations inhabiting contrasting environments, with each population comprising 20 diploid individuals. The msms command line to generate coalescent samples for this demographic model would be:  
 	
-	mv 'assembly_homozygous.fa?dl=1' assembly_homozygous.fa
-
-## Step 6. Getting a hand of the command-line in Docker
-
-Now that we have all the data downloaded, let's try a few bash commands to see what we have.
-
-	cd /data/Workshop/Data/
-	ls
-	ls -lrth *bam
-
-How many BAM files (i.e. samples) are there? (hint: ls \*bam | wc -l). In total we have 95 samples (13 populatiosn with 5 individuals each and 2 populations with 15 individuals each).
-
-Now, let's check directory permissions. Do we have permission to write to the /data/Workshop/Data/ directory? You can check this with the command "ls -l". If not, let's change permissions so that you can write to this directory.
-chmod 777 /data/Workshop/Data
-
-# Step 7. Index files
-We now have the data stored in a named volume. Even when we close the Docker container, the volume is maintained. We can always re-access the volume by mounting it it when running a new container. Before we perform any analysis with BAM and fasta files (or really any large sequencing file), we need to index them so that programs can parse through them efficiently. To do this, let's open another terminal tab, in which we will run Samtools. Note the named volume that we mount to.
-
-	docker run --name samtools --mount source=myvol,target=/data -w /data/ -it --rm biocontainers/samtools:v1.9-4-deb_cv1
+	msms 80 1 -t 10 -I 2 40 40 -n 1 1 -n 2 1 -m 1 2 M_12 -m 2 1 M_21 > msms_output
 	
-Index the fasta file (i.e. the reference sequence):
+   where M is the scaled migration rate Nm (demographic parameter) that we condition the detection of selection on. Note that in msms, M as well as most other parameters are scaled to a fixed, global N<sub>E</sub> (=10,000). msms assumes haploid number of samples, hence we provide 40 haploid individuals per population here.
 
-	samtools faidx assembly_homozygous.fa
+If parameters are not known with confidence, as will usually be the case with empirical systems, we can define the effective population sizes (and other demographic parameters) as variables. Note that msms defines N in fractions of the global N<sub>E</sub> (= 10,000).
 
-Index all the BAM files (here we'll do this in a for loop):
-
-	for i in $(ls *bam); do samtools index ${i}; done
-
-
-!!!!!!!!!!!!!!! Make sample list (let's actually have this in the Github, in case htere are difference with file ordering)
-!!!!!!!!!!!!!!!#ls *bam > samples.list
-
-
-
-# Principle component analysis
-
-What is principle component analysis (PCA)? PCA is a method that reduces the dimensionality of a dataset to emphasize variation and bring out strong (and more easily) interpretable) patterns in a dataset. It does this by transforming a large set of (potentially correlated) variables into a smaller set of uncorrelated variables while minimising information loss.
-
-We can visualise how a PCA works through this helpful, interactive link:
-
-https://setosa.io/ev/principal-component-analysis/ - link or embed!
-
-
-For NGS data, each variant site (e.g. single nucleotide polymorphism (SNP)) represents one dimesion (axis) of variation. So if we have 1 million SNPs, we have 1 million dimensions (axes) of variation. Obviously, this would be extremely difficult to visualise without some sort of transformation (we can normally only visualise 2-3 axes at once). Additionally, many SNPs will be highly correlated (linked), e.g. think height and weight, implying the a dimension-reduction method like PCA can be highly effective at reducing the dimensionality of the dataset while retaining most of the variance.
-
-So we want to find a a rotation and scaling of the data to find axes that maximuse variation within the data. We can do this simply, e.g. in R or other tools (eg. SNP relate), however recall we have low coverage data, and our certainty in genotype calls and consequently variant calls will be high. So we want to work with genoytpe likelihoods.
-
-Also (refer to PCAngsd website), missing data in these normal algorithms typically impute missing data as the the mean/zero, which leads to particular behaviour.
-
-Add pic from PCAngsd
-
-To perform PCA on lowcov data,  we have to infer the genetic covariance matrix, which can be estimated in different ways. Here we'll use PCANGSD. See lcs and pcangsd tutorials.
-
-## Step 1: PCAngsd takes as input genotype likelihoods in beagle format, which we generated in the step before using the `-doGLF 2`option.
-
-	REF=/data/Workshop/Data/assembly_homozygous.fa
-
-Here, we have assigned the reference sequence fasta file to a variable, so that it is easy to refer to in the next steps (we can expand a variable *i* via ${*i*).
-
-	angsd -GL 2 -out GL_95inds -ref ${REF} -nThreads 4 -doGlf 2 -doMajorMinor 1 -SNP_pval 1e-6 -doMaf 1 -only_proper_pairs 1 -minMapQ 1 -minQ 1 -C 50 -remove_bads 1 -bam samples.list -rf scaffolds.list
-	angsd -GL 2 -out GL_75inds -ref ${REF} -nThreads 4 -doGlf 2 -doMajorMinor 1 -SNP_pval 1e-6 -doMaf 1 -only_proper_pairs 1 -minMapQ 1 -minQ 1 -C 50 -remove_bads 1 -bam samples_5inds.list -rf scaffolds.list
-
-
-# Step 2: Run PCA via pcangsd. We can first look at PCAngsd's options via:
+	msms 80 1 -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21 > msms_output
 	
-	pcangsd.py -h
+To explore parameter space (for parameter estimation), we want these variables to be drawn from large, prior ranges. We will do this by embedding the msms command, as well as the following LSD-High command, in ABCtoolbox. 
 
-And then perform the PCA (adjusting the number of threads accordingly)
+   ###	b) Calculating simulated summary statistics
+   	
+   To replicate observed sequencing pipelines, generate appropriate simulated sequencing data, and calculate a suite of summary statistics for ABC, we use LSD-High or LSD-Low. Similar to msms, LSD-High assumes haploid sample numbers. Given the simulated coalescent sample, we can generate summary statistics by e.g.:
+	
+	python lsd_high.py msms_output -d 40 -d 40 -l 5000 -f ABC
 
-	prefix="GL_95inds"
-	prefix="GL_75inds"
-	pcangsd.py -beagle ${prefix}.beagle.gz -threads 2 -o ${prefix}.pcangsd
+   Or if we want to simulate errors (at a certain error rate), filtering (identical to that used for the observed data), pooled samples, and a specific coverage distribution, we can do e.g.:
+	
+	python lsd_high.py msms_output -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c covDist_moments.txt -f ABC
+	
+   where we sample according a coverage distribution fitted to the empirical coverage distribution, whose moments are described here in covDist_moments.txt (OPTIONAL). 
+
+To acquire this fitted distribution, we first need to acquire the empirical coverage distribution. Per-site coverage of empirical data can be acquired e.g. via SAMtools:
+
+	samtools depth bam.file > bam.depthPerSite
+
+We can then explore which theoretical distribution best captures this observed coverage distribution. 
+
+	# Load these libraries
+	library(fitdistrplus)
+	library(logspline)
+	library(MASS)
+
+	# Read in data
+	raw_data <- read.table(“bam.depthPerSite”, header = FALSE, sep = "\t", row.names = NULL)
+
+	# For testing, you may want to subsample data (since there can be millions of rows)
+	raw_data <- raw_data[sample(nrow(raw_data), 100000), ]
+
+	# Column 3 lists the coverages for the population.
+	pop_data <- raw_data$V3
+
+	# Consider if you want to apply a max depth filter
+	max_depth <- 500
+	pop_data_filtered <- pop_data[pop_data <= max_depth]
+
+	# Evaluate and plot which theoretical distribution best fits data
+	# Full data
+	descdist(pop_data, discrete = TRUE, boot = 100)
+	# Filtered data
+	descdist(pop_data_filtered, discrete = TRUE, boot = 100)
+
+	# Fit the distribution to the data and plot
+	# Full data
+	pop_data_nbinom <- fitdist(pop_data, "nbinom")
+	plot(pop_data_nbinom)
+	# Filtered data
+	pop_data_filtered_nbinom <- fitdist(pop_data_filtered, "nbinom")
+	plot(pop_data_filtered_nbinom)
+
+	# Output the summary
+	summary(pop_data_nbinom)
+	summary(pop_data_filtered_nbinom)
+	# This summary contains the moments of the distribution (e.g. mean and s.d. for normal distributions; mean and size (dispersal) for negative binomial distributions). 
+
+We specify the moments of the fitted distribution to a file; with columns representing populations (currently in LSD-High, we assume a common coverage distribution for a population; *this needs to be updated to accommodate individual coverage distributions*), the first row representing the mean of the distribution and the second row the standard deviation or dispersal. Note that sequencing data is typically best fit by a negative binomial distribution.
+
+For more information on the available options for LSD-High, you can run:
+
+	python lsd_high.py -h
+	
+If the observed data is of low-coverage (< 10x), it is better to work with genotype likelihoods than with called genotypes, to ensure that the uncertainties in the genotypes are propagated and treated fairly. We can simulate low-coverage data from ms/msms via LSD-Low, which is a bash wrapper function for MsToGLF (http://www.popgen.dk/angsd/index.php/MsToGlf) and ANGSD. MsToGLF and hence LSD-Low assume diploid sample size. Similar to LSD-High, LSD-Low allows the user to replicate (define) the depth and error rate. Additionally, the reference fasta index (of the observed data) must be supplied.
+
+	lsd_low.sh -f msms_output -p 20,20 -l 5000 -d 5 -e 0.001 -r ref.fai -w working_dir -o output 2>&1 | tee -a log.file
+
+###	c) Efficiently generating simulations with ABCtoolbox
+
+Steps **ii.a)** and **ii.b)**, that is the generation of simulated summary statistics, can be embedded and performed efficiently under ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/simulation/Performing%20Simulations%20with%20ABCtoolbox. Running these two steps under ABCtoolbox confers the convenient ability to draw variable parameters (e.g. M and N) from defined prior ranges and thus automate the process of generating simulated data.
+
+Example input file for generating simulations with ABCtoolbox:
+
+	//	ABCtoolbox input file
+	//	*********************
+
+	// To set up ABCtoolbox to perform simulations
+	task	simulate
+
+	// Define the type of sampler to be used (standard, MCMC or PMC)
+	samplerType	standard
+	// samplerType	MCMC
+
+	// Define .est file, which defines the priors
+	estName	ABCSampler.priors
+
+	// Define the file which contains the observed sumstats. This is to ensure that the observed data (summary statistics) and the simulated data (summary statistics) are in the same format
+	obsName	/path/2popModel_observedSumStats
+
+	//	Output file name
+	outName	2pop_simpleModel_4params_simulatedSumStats
+
+	//	Number of simulations to perform
+	numSims	5000
+
+	//	Name of the simulation program. Must be an executable.
+	simProgram	/path/msms
+
+	//	This is the msms command line we use
+	//	We replace parameter (argument) values with tags defined in .est file, and define under simArgs (removing "msms")
+	simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
+
+	//	This redirects the standard output to a file
+	simOutputRedirection SIMDATANAME
+
+	//	Name of the program calculating summary statistic
+	//	LSD-High
+	sumStatProgram /path/lsd_high.py
+	//	LSD-Low
+	//	sumStatProgram /path/lsd_low.sh
+
+	//	Arguments to be passed to the program calculating summary statistics.
+	//	LSD-High
+	sumStatArgs	SIMDATANAME -d 40 -d 40 -l 5000 -p -i --error_method 4 --error_rate 0.001 --minallelecount 2 --mindepth 10 --maxdepth 500 --sampler nbinom -c /path/covDist_moments.txt  -f ABC
+	//	LSD-Low
+	//sumStatArgs -f SIMDATANAME -p 20,20 -l 5000 -d 50 -e 0.001 -r /path/ref.fai -w . -o summary_stats_temp.txt
+
+	//	Indicate name of summary statistics output
+	sumStatName summary_stats_temp.txt
+
+	//	Verbose output
+	verbose
+
+	//	Define name of log file
+	logFile	2pop_simpleModel_4params_simulatedSumStats.log
+
+	//Additional argument tags (required for ABC-MCMC)
+	//numCaliSims 100
+	//thresholdProp 0.1
+	//rangeProp 1
 
 
-# We can then plot the resutls (PC1 vs PC2) in R as follows (don't forget to upload pop metadata files for PCA, admixture, FST to your github!);
-	R code
+Example priors file for generating simulations with ABCtoolbox:
 
-# How do we interpet the results (add html results to Github tutorial!). We find three distinct clusters. Let's add map to githubs totorial. How much variance is explained by the first two PCs? Provide links/references on how to interpret/not interpret PCA results
+	// Example ABCtoolbox priors and rules file
+	// *********************
 
-# Admixture/ancestry analysis
+	// #### Example 4 parameter, 2 population model ####
 
-In some cases we also want to infer genome-wide admixture proportions
-for each individuals. Similar to PCA, there are different ways of
-inferring admixture proportions from genotype likelihoods. Here, we will
-use [ngsAdmix](http://www.popgen.dk/software/index.php/NgsAdmix) and
-will also present a way of inferring admixture proportions with PCAngsd.
-Similar to the PCA, we want to use an LD-pruned SNP dataset for this
-analysis to reduce the impact of non-independent SNPs on the ancestry
-inference.
+	// msms command line in input file:
+	//	simArgs 80 no_loci -t theta -I 2 40 40 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
 
-ngsAdmix uses a genotype likelihood file in beagle format (same as for
-PCAngsd) as input, which is specified using the `-likes` option. In
-addition, there are a range of parameters that can be adjusted. Here we
-only set the number of ancestry clusters using the `-K` option to K=2.
-In reality, it is advisable to compare different numbers of ancestry
-clusters by iterating over different values of K.
+	[PARAMETERS]
 
-In case the analysis is not converging, one can also increase the
-maximum number of EM iterations using the `-maxiter` option.
+	//	#isInt? #name	#dist.#min	#max	
 
-ngsAdmix produces three different outputs files:
+	// 	Migration rates 
+	//	In msms, M_i_j represents the fraction of subpopulation i that is made up of migrants from subpopulation j in forward time. Hence pastward we have the rate that a lineage moves from deme i to j as M_i_j.
+	0	log_M_12	unif	-4	4 output
+	0	log_M_21	unif	-4	4 output
 
-  - A run log containing the log likelihood of the admixture estimates:
-    `.log file`
-  - A file containing the allele frequencies of all ancestral
-    populations (in this case two ancestral clusters): `.fopt file`
-  - A file containing the admixture proportions for each individual:
-    `.qopt file`
+	//	Effective population sizes 
+	//	Subpopulations are defined as fractions relative to N_effective 
+	0	log_N1	unif	2	7 output
+	0	log_N2	unif	2	7 output
 
-We are mostly interested in the admixture proportions and the log
-likelihood of the estimates. The log likelihoods can be compared between
-runs with different values of K to select the most likely number of
-ancestral clusters (However, this should always be interpreted in a
-biologically meaningful context)
-
-In addition to ngsAdmix, PCAngsd can also be used to infer admixture
-proportions. The command is similar to the one used for the PCA with the
-addition of to a `-admix` option. The input file for ngsAdmix and
-PCAngsd is the same, making comparisons relatively easy.
-
-Other than ngsAdmix, PCAngsd can automatically infer the most likely
-number of ancestry cluster. However, one can also set the number of
-clusters using the `-admix_K` option.
-
-Here, we have PCangsd output individual admixture proportions (-admix), and also output population specific allele frequencies (-admix_save). We iterate over K (here via the -e argument which defines the number of eigenvalues, rather than via -admix _K as the latter is not recommended).
-
-To estimate admixture proportions in PCangsd, you need to define an alpha parameter (sparseness regularisation parameter). This can be specified manually (-admix_alpha) or automatically searching for the optimal alpha (-admix_auto), specifiying only a soft upper bound.
-	for k in $(seq 1 2); do
-		pcangsd.py -beagle ${prefix}.beagle.gz -threads 2 -e ${k} -admix -admix_auto 10000 -o ${prefix}.admix.pcangsd.K$((${k}+1))
-	done
-
-Alternatively, we can use NGSAdmix (slower)
-Remember the LSB_JOBINDEX goes from 1,2,3,....
-To change, add constant to variable e.g. $((${i}+c))
-	for k in $(seq 1 2); do
-		NGSadmix -likes ${prefix}.beagle.gz -K $((${k}+1)) -P 2 -o ${prefix}_$((${k}+1))
-	done
+	//	Fixed parameters
+	//	Here, we'll want to keep sequence length fixed (so that ABCtoolbox can conveniently vary theta for us) and bounded to a certain maximum length (since we're operating under the assumption of no recombination within-locus and free recombination between-loci)
+	1	sequence_length	fixed	5000	hide
+	//	We define the mutation rate at a reasonable value (e.g. 1x10-8).
+	0	mutation_rate	fixed	0.00000001	hide
+	//	Define the number of independent loci (iterations)
+	1	no_loci	fixed	1	output
 
 
-Copy files to/from container (volume) to local filesystem (here we create a temporary container (named temp) with our named volume mounted)
+	[RULES]
 
-	docker run --name temp --mount source=myvol3,target=/data -w /data ubuntu
-	docker cp ./Desktop/Test/samples_5inds.list temp:/data/Workshop/Data/
-	docker cp temp:/data/Workshop/Data/GL_95inds.pcangsd.cov ./Desktop/Test/
-	docker cp temp:/data/Workshop/Data/admix_results ./Desktop/Test/
-	#remove/detach docker contained after copying
+	// E.g. continent population sizes should be larger than island population sizes
 
 
-# Site frequency spectrum and summary statistics
+	[COMPLEX PARAMETERS]
 
-## For single populations.
-	for i in $(seq 1 15); do
-		pop=`sed -n ${i}p < pop5inds.list`
-		pop_bamlist='./Population_lists_5inds/'${pop}.5inds
-		# Note 1: BAQ adjusts (downgrades) quality scores arround indels, to reflect greater uncertainty around indel regions. Since we already perform GATK IndelRealigner, this is less necessary here. Otherwise, baq 2 (extended baq) would be preferable over baq 1. See: https://github.com/ANGSD/angsd/issues/97, http://bioinformatics.oxfordjournals.org/content/early/2011/02/13/bioinformatics.btr076, https://www.biostars.org/p/440490/, http://www.htslib.org/doc/samtools-mpileup.html
-		# Note 2: Use GL 2! For BAMs which have been recalibrated and have had overlapping reads merged/clipped, GL 1 results in weirdly shaped SFS (see: http://www.popgen.dk/angsd/index.php/Glcomparison and SFS_troubleshooting.xlsx). 
-		angsd -b ${pop_bamlist} -doSaf 1 -anc ${REF} -ref ${REF} -GL 2 -P 2 -minMapQ 1 -minQ 1 -C 50 -remove_bads 1 -only_proper_pairs 1 -doCounts 1 -setMinDepth 10 -setMaxDepth 75 -minInd 3 -out ${OUT}/${pop}
-		# Obtain the maximum likelihood estimate of the SFS (here for the folded spectrum)
-		realSFS ${OUT}/${pop}.saf.idx -P 2 -fold 1 > ${OUT}/${pop}.sfs
-		# Calculate the thetas for each site
-		realSFS saf2theta ${OUT}/${pop}.saf.idx -sfs ${OUT}/${pop}.sfs -outname ${OUT}/${pop}
-		# Estimate Tajimas D and other statistics
-		thetaStat do_stat ${OUT}/${pop}.thetas.idx
-	done
+	//	Various
+	0	theta = (4 * 5000 * mutation_rate * sequence_length)	output
 
-## For two populations; population genetic differentiation g2 populations, FST, 2D-SFS, input for dadi/moments. PREPARE R PLOTTING SCRIPT FOR FST!
-	# The following requires an input file which lists all pairwise comparisons, e.g. Airolo Bayasse
-	# This can be produced by 1.Make_list_pairwise.sh
-	for i in $(seq 1 15); do
-		pop=`sed -n ${i}p < ${working_dir}/list_pop_name_pairs/pop_name_pairs`
-		# Remember, set allows you to define the elements of your list as variables, according to their order
-		set -- $pop
-		##calculate the 2dsfs prior (choose folded or unfolded)
-		realSFS ${input_dir}/${1}.saf.idx ${input_dir}/${2}.saf.idx -P 2 -fold 1 > ${output_dir}/${1}.${2}.ml
-		##prepare the fst for easy window analysis etc. Option -whichFst 1 should be preferable for small sample sizes.
-		realSFS fst index ${input_dir}/${1}.saf.idx ${input_dir}/${2}.saf.idx -sfs ${output_dir}/${1}.${2}.ml -fstout ${output_dir}/${1}.${2}.stats -whichFst 1
-		#get the global estimate
-		FST=`/cluster/project/gdc/shared/tools/angsd0_933/angsd/misc/realSFS fst stats ${output_dir}/${1}.${2}.stats.fst.idx`
-		printf "${1}\t${2}\t${FST}\n" >> ${output_dir}/FST_summary.txt
-		#get sliding window estimates
-		realSFS fst stats2 ${output_dir}/${1}.${2}.stats.fst.idx -win 50000 -step 10000 > slidingwindow
-	done
+	// We output population size as absolute rather than ratio.
+	0	fraction_N1 = pow10(log_N1 - 4)	output
+	0	fraction_N2 = pow10(log_N2 - 4)	output
 
-## 3 populations, PBS, 3D-SFS, input for dadi/moments
-# Select 3 populations, i.e. one population each from each lineage. Code is similar to that above for FST (see ANGSD and low-cov tutorial website)
-	realSFS fst index pop1.saf.idx pop2.saf.idx pop3.saf.idx -sfs pop1.pop2.ml -sfs pop1.pop3.ml -sfs pop2.pop3.ml -fstout out.pbs -whichFst 1
+	0	M_12 = pow10(log_M_12) output
+	0	M_21 = pow10(log_M_21) output
 
-# Note that calling e.g. -n 4 and -P 16 allows better CPU usage as it allows for hyperthreading
-	realSFS ${input_dir}/${1}.saf.idx ${input_dir}/${2}.saf.idx ${input_dir}/${3}.saf.idx -P 8 > ${output_dir}/${1}.${2}.${3}.sfs
+Once we have defined these input (let's call this ABCSampler.input) and priors files (let's call this ABCSampler.priors), we can run generate the simulated data with ABCtoolbox as such:
 
-## optional: dadi
-## optional: selscan (requires vcfs)
+	ABCtoolbox ABCSampler.input
 
+##  iv) Remove correlation between summary statistics
+To account for potential correlation between summary statistics and retain only their informative components, we apply a Partial Least Squares (PLS) transformation. We can calculate PLS coefficients via find_pls.r. We want to find the minimum number of PLS components that explains the majority of the signal. Hence, our strategy is two run this in two steps: 
+
+**a)** Run for # PLS components = # of summary statistics. find_pls.r will output a plot which helps determine what the optimum number of PLS components is. 
+
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/PLS_example.png" width="400">
+
+**b)** Here, the plot suggests that the data (multitude of summary statistics) can be sufficiently summarised by 5 PLS components. Re-run find_pls.r with this optimum number of PLS components. Be sure to modify the following lines in this script depending on the format of your summary statistics file.
+
+		# Define working directory
+		directory<-"/path/"
+
+		# Define number of PLS components
+		numComp<-5
+
+		# Define the starting column for the summary statistics
+		firstStat<-13
+
+		# Define the columns for the free (i.e. non-fixed) parameters
+		p<-c(2,3,4,5)
+
+Observed and simulated summary statistics can then be transformed into PLS components via defining such a parameter file (let's name this as transformPLS.input):
+  
+	task	transform
+	linearComb  PLSdef.txt
+	input	2pop_simpleModel_4params_simulatedSumStats
+	output	2pop_simpleModel_4params_PLStransformed_simulatedSumStats.txt
+	boxcox
+	numLinearComb	5
+
+And running:
+	
+	ABCtoolbox transformPLS.input
+
+##  v) Validation of simulations
+Before advancing to parameter estimation, we should first make sure that our simulated summary statistics efficiently captures that of the observed data. 
+
+To do this, we can simply plot the simulated and observed summary statistics in summary statistic or PLS space, to assess overlap. 
+
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/Sims_vs_Obs_examplePlot.png" width="500">
+
+	# Import libraries
+	library(ggplot2)
+	library(gridExtra)
+
+	# Import data
+	ABC_rej <- read.delim("./2pop_simpleModel_4params_PLStransformed_simulatedSumStats.txt")
+	ABC_obs<-read.delim("./2popModel_PLStransformed_observedSumStats.txt")
+
+	# Select column with PLS LinearCombination_n
+	ABC_rej<-ABC_rej[c(1:5000),c(12:ncol(ABC_rej))]
+	ABC_obs<-ABC_obs[,c(2:ncol(ABC_obs))]
+
+	# Number of PLS components (to plot!)
+	num_PLS <- 4
+
+	# For storing ggplot objects in a list using a loop: https://stackoverflow.com/questions/31993704/storing-ggplot-objects-in-a-list-from-within-loop-in-r
+	plot_list <- list()
+	for (i in seq(1, (num_PLS/2))) {
+	  local({
+	    i <- i
+	    plot_list[[i]] <<- ggplot(data = ABC_rej, aes(x=ABC_rej[,2*i-1], y=ABC_rej[,2*i]) ) +
+	      geom_hex(bins = 35) + scale_fill_gradientn(colours=c("gray85","gray15"),name = "sim count",na.value=NA) +
+	      geom_hex(data = ABC_obs, bins = 70, aes(x=ABC_obs[,2*i-1], y=ABC_obs[,2*i], alpha=..count..), fill="red") +
+	      theme_bw() + xlab(paste0("PLS ",2*i-2)) + ylab(paste0("PLS ",2*i-1)) + labs("asd")
+	  })
+	}
+
+	grid.arrange(grobs = plot_list, ncol=3, top = "Overlap of simulated & observed PLS-transformed summary statistics")
+
+
+##  vi) ABC parameter estimation
+  Perform demographic parameter estimation via ABCtoolbox. See: https://bitbucket.org/wegmannlab/abctoolbox/wiki/estimation/parameter_estimation. In our example, we seek to obtain the joint posterior of reciprocal migration rates between the 2 populations. The ABCtoolbox parameter file should reflect this accordingly.
+
+	//----------------------------------------------------------------------
+	//ABCtoolbox input file for parameter estimation
+	//----------------------------------------------------------------------
+
+	//	To estimate parameters
+	task estimate
+
+	//	Define estimation method
+	//	Recall that when setting independentReplicates, the obs file should contain multiple entries (one per line), where each entry is the sumstats calculated from one (neutral) region. The algorithm then consider each region as an independent replicate, on which it subsequently calculates the posteriors.
+	//estimationType standard
+	//estimationType independentReplicates
+
+	//	Observed data
+	obsName	/path/example_PLS5.obs
+
+	//	Simulated data
+	simName /path/2pop_simpleModel_4params_PLStransformed_simulatedSumStats.txt
+
+	//	Specifies the columns containing the parameters of interest in the file containing the summary statistics of the simulated data, i.e. its assigned values are numbers indicating the position of the respective columns in the file.
+	params 2-3
+
+	//	Rejection settings
+
+	//	Specifies the number of simulations in the file containing the summary statistics of the simulated data to be taken into account.
+	maxReadSims 10000000
+
+	//	Specifies the number of simulations closest to the observed data to be selected from the simulations.
+	numRetained 2500
+
+	//	Calculates the tukey depth P-value. This calculates the Tukey depth (the minimum number of sample points on one side of a hyperplane through the point, i.e. a measure of how centred a point is in an overall cloud of points) of the observed data and contrasts it with the Tukey depth of the distribution of all retained simulation points (hence argument should be equal or less than numRetained), to produce a p-value. If the observed point is close to the centre of the retained simulations, we expect that most 
+	//tukeyPValue 500
+
+	//	Calculates the marginal density P-value. Similar in approach to the above, this tag calculates the P-value for the marginal density of the observed datapoint by doing so for the observed datapoint and the retained simulations (distribution)
+	//marDensPValue 500
+
+	//	If the parameter writeRetained is defined and set to 1, ABCestimator writes two files: one containing the parameter and statistics of the retained simulations and one with the smoothed parameter distribution of the retained simulations
+	writeRetained 1
+
+	//	To remove highly correlated statistics
+	pruneCorrelatedStats
+
+	//	Specifies whether (1) or not (0) the statistics are standardized before the distance is calculated.
+	standardizeStats 1
+
+	//	Posterior estimation settings
+	//	Since ABCestimator standardizes the parameters internally to the range [0, 1] diracPeakWidth, the same diracPeakWidth value is used for all parameters. Too small values of diracPeakWidth will result in wiggly posterior curves, too large values might unduly smear out the curves. The best advice is to run the calculations with several choices for diracPeakWidth. The choice of diracPeakWidth depends on the number of retained simulations: the larger the number of retained parameter values, the sharper the smaller diracPeakWidth can be chosen in order to still get a rather smooth result. If the parameter diracPeakWidth is not defined, ABCestimator uses as value of 0.001, unless the parameter numRetained is defined. In this case ABCestimator sets σk = 1/N, where N is the number of simulations to retain, as proposed by Leuenberger and Wegmann (2009).
+	//diracPeakWidth 0.02
+
+	//	ABCestimator calculates the density of the marginal posteriors on a number of equally spaced points along the range of every parameter. The number of such points is specified with the parameter posteriorDensityPoints with default value 100.
+	posteriorDensityPoints 100
+
+	//	Should you wish to estimate joint posteriors
+	jointPosteriors log_M_12,log_M_21
+	//	Assuming grid sampling; the number of points (density) along each dimension (parameter). In case of using jointSamplesMCMC, this nonetheless needs to be set to a minimum of 2.
+	jointPosteriorDensityPoints 33
+
+	// 	Should you wish to MCMC sample. For reference see: https://bitbucket.org/wegmannlab/abctoolbox/src/master/
+	//jointSamplesMCMC 10000
+	//sampleMCMCStart jointmode
+	//sampleMCMCBurnin 100
+	//	You'll want to achieve an acceptance rate of circa 0.33 in an MCMC (check the log file for acceptance rate figures). The sampleMCMCRangeProp parameter allows you to tweak this (the higher the sampleMCMCRangeProp, the lower the acceptance rate)
+	//sampleMCMCRangeProp 2
+	//sampleMCMCSampling 5
+
+	//	For cross-validation of parameter estimates. The pseudo-observed data can either be chosen among the retained simulations (retainedValidation) or among all simulations (randomValidation). The number of simulations to be used as pseudo-observed data is assigned to either one of the argument-tags.
+	//randomValidation 1000
+	
+	//	Specify the output file prefix
+	outputPrefix ABC_estimation_2pop_simpleModel_
+	
+	//	Specify output log file name
+	logFile ABC_estimation_2pop_simpleModel.log
+
+	verbose
+
+Once we have defined this parameter file (let's call this file ABCEstimate.input), we can perform the parameter estimation as such:
+
+	ABCtoolbox ABCEstimate.input
+
+##  vii) Estimate neutral demographic parameters
+  As LSD first requires an estimate of neutral demographic parameters, this must first be estimated. Following parameter estimation for the putative neutral regions (or the genome-wide representation), we combine the neutral window posterior density distributions to inform of the global (neutral) parameter estimates.
+
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/Combine_posteriors_github.png" width="625">
+
+To acquire an estimate of the neutral (global) posteriors, we run can do as follows, taking the output of the previous step (v).
+
+	# Import libraries
+	library(MASS)
+	library(RColorBrewer)
+
+	# Define input variables
+	nparams <- 4 # number of parameters
+
+	# Directory and prefix
+	master_dir <- "/path/"
+	results_dir <- "Estimation_results_2pop_simpleModel"
+	prefix <- "ABC_estimation_2pop_simpleModelmodel0_MarginalPosteriorDensities_Obs"
+	setwd(paste0(master_dir,results_dir))
+
+	####### Plot combined posteriors and all observations (loop over fraction of loci under selection and over models #######
+
+	# Define total number of loci and fraction of loci which are under selection and neutrality. 
+	total_num_loci <- 1000
+
+	# Find product of probability densities (take log and sum)
+	prod <- matrix(0, ncol=nparams, nrow=100)
+	for (i in 0:(total_num_loci-1)) { # recall that ABCEstimator results are 0-indexed so no of loci - 1
+	  ABC_GLM<-read.delim(paste(prefix, i, ".txt", sep = "")) 
+	  for(p in 1:nparams){
+	    prod[,p] <- prod[,p] + log(ABC_GLM[,2*p+1]);
+	  }
+	}
+
+	# Normalise product of probability densities
+	for(p in 1:nparams){
+	  # Normalise and plot product of densities
+	  prod[,p] <- prod[,p] - max(prod[,p]);
+	  prod[,p] <- exp(prod[,p])
+	}
+
+	# Get values at peaks of product of probability densities (values)
+	combined_estimate_num <- vector()
+	for(p in 1:nparams){
+	  comb_estimate_param_num <- (ABC_GLM[,2*p][match(max(exp(prod[,p])),exp(prod[,p]))])
+	  combined_estimate_num[[p]] <- comb_estimate_param_num
+	}
+
+	# Get names and values at peaks of product of probability densities (names and values)
+	combined_estimate <- list()
+	for(p in 1:nparams){
+	  comb_estimate_param <- (paste(colnames(ABC_GLM)[2*p], round(ABC_GLM[,2*p][match(max(exp(prod[,p])),exp(prod[,p]))],3), sep = ": "))
+	  combined_estimate[[p]] <- comb_estimate_param
+	}
+
+	# Plot
+	par(mfrow=c(1,2))
+	for(p in 1:nparams){
+	  # Normalise and plot product of densities
+	  plot(ABC_GLM[,2*p], prod[,p], type='l', lty=2, col='darkred', main=names(ABC_GLM[2*p]), ylim = c(0,(max(ABC_GLM[[2*p + 1]])*2)), lwd = 2, xlab = combined_estimate[[p]]);
+	  # Plot all windows
+	  for (i in 0:(total_num_loci-1)) {
+	    ABC_GLM<-read.delim(paste(prefix, i, ".txt", sep = ""))
+	    #normalised_density <- ABC_GLM[[2*p + 1]] / max(ABC_GLM[[2*p + 1]]) # if you want to normalise the height for plotting
+	    lines(ABC_GLM[[2*p]],ABC_GLM[[2*p + 1]],type='l',col='dodgerblue', lwd = 0.1)
+	    #lines(ABC_GLM[[2*p]],normalised_density,type='l',col='dodgerblue', lwd = 0.1)
+	  }
+	}
+
+	# Print result
+	print(combined_estimate)
+
+##  viii) Calculate deviation from neutral expectations
+  Following estimation of neutral posteriors, we may then calculate the departure of window parameter estimates from neutral expectations. This can be performed via lsd_scan.R. Note that modifications to the script (reflecting defined paths and file naming scheme) are required.
+
+##  ix) Visualise results	
+  To visualise the results, we can generate a Manhattan plot of loci under selection and, if conditioned on joint (e.g. reciprocal migration) parameters, the asymmetry of the joint posterior for each loci. This can be generated via lsd_blotter.R.
+  
+Example single chromosome plot:
+
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/SingleChrManhattanPlot_example.png" width="1000"> 
+
+Example whole-genome plot:
+
+<img src="https://github.com/hirzi/LSD/blob/master/Example figures/MultiChrManhattanPlot_example.png" width="1000"> 
+
+===================================================================
+
+# Citation
+
+Luqman et al. 2021; doi: https://doi.org/10.1111/1755-0998.13415
+
+===================================================================
