@@ -519,6 +519,6 @@ Example whole-genome plot:
 
 # Citation
 
-Luqman et al. 2021; doi: https://doi.org/10.1111/1755-0998.13415
+Luqman H, Widmer A, Fior S, Wegmann D. Identifying loci under selection via explicit demographic models. Mol Ecol Resour. 2021;00:1–19. https:// doi.org/10.1111/1755-0998.13415
 
 ===================================================================
