@@ -177,7 +177,7 @@ elif [ "$len_msout" -ge "$nosegsites_linecount_threshold" ] && [ "$num_segsites"
 		realSFS fst index ${working_dir}/${1}.saf.idx ${working_dir}/${2}.saf.idx -sfs ${working_dir}/${1}.${2}.ml -fstout ${working_dir}/${1}.${2}.stats -whichFst 1
 		# Get the global estimate (here we output only the weighted estimate)
 		echo "${1}.${2}.fst" > ${working_dir}/${1}.${2}.globalFST
-		realSFS fst stats ${working_dir}/${1}.${2}.stats.fst.idx 2> /dev/null | cut -f 2 -d " " >> ${working_dir}/${1}.${2}.globalFST
+		realSFS fst stats ${working_dir}/${1}.${2}.stats.fst.idx 2> /dev/null | cut -f 2 >> ${working_dir}/${1}.${2}.globalFST
 		# Get sliding window estimates
 		#realSFS fst stats2 ${working_dir}/${1}.${2}.stats.fst.idx -win 500 -step 500 > ${OUT}/FST_results/slidingwindow_${1}.${2}
 	done

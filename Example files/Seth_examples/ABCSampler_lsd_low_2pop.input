@@ -1,0 +1,51 @@
+//	ABCtoolbox input file
+//	*********************
+
+// To set up ABCtoolbox to perform simulations
+task	simulate
+
+// Define the type of sampler to be used (standard, MCMC or PMC)
+samplerType	standard
+// samplerType	MCMC
+
+// Define .est file, which defines the priors
+estName	ABCSampler.priors
+
+// Define the file which contains the observed sumstats. This must be in the same form as the simulated sumstats output
+obsName	/scratch/mskset001/novogene/LSD/abietina_diabolis_LSD_low_OBS_stricter/abietina_diabolis_LSD_low_OBS.txt
+
+//	Output file name
+outName	2pop_simpleModel_4params_simulatedSumStats
+
+//	Number of simulations to perform
+numSims	50
+
+//	Name of the simulation program. Must be an executable.
+simProgram	/home/msms/bin/msms
+
+//	This is the msms command line we use
+//	We replace parameter (argument) values with tags defined in .est file, and define under simArgs (removing "msms")
+simArgs 36 no_loci -t theta -I 2 24 12 -n 1 fraction_N1 -n 2 fraction_N2 -m 1 2 M_12 -m 2 1 M_21
+
+//	This redirects the standard output to a file
+simOutputRedirection SIMDATANAME
+
+//	Name of the program calculating summary statistic
+sumStatProgram /path/lsd_low_3pop.sh
+
+//	Arguments to be passed to the program calculating summary statistics.
+sumStatArgs	-f SIMDATANAME -p 12,6 -l 5000 -d 10 -e 0.001 -r /scratch/mskset001/novogene/ReferenceBasedVarDetect/cerinthoides_bcftools/cerinthoides_k96_merged_deduped-scaffolds_minlen400.fa.fai -w . -o summary_stats_temp.txt
+
+//	this outputs a sumstats file with default name summary_stats-temp.txt. Let's rename the output to summary_stats_temp.txt:
+sumStatName summary_stats_temp.txt
+
+//	Verbose output
+verbose
+
+//	Define name of log file
+logFile	2pop_simpleModel_4params_simulatedSumStats.log
+
+//Additional argument tags (required for ABC-MCMC)
+//numCaliSims 100
+//thresholdProp 0.1
+//rangeProp 1

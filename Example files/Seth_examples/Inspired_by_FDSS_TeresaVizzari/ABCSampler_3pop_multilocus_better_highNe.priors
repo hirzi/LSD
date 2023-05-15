@@ -1,0 +1,67 @@
+// ABCtoolbox priors and rules file
+// *********************
+
+// #### Example 11 parameter, 3 population model ####
+
+// msms command line in input file: 
+//	with ancestral size changes: 50 no_loci -t theta -I 3 24 12 14 -N N1 -n 2 fraction_N2 -n 3 fraction_N3 -ma x m12 m13 m21 x m23 m31 m32 x -ej tj21 2 1 -ej tj31 3 1 -en tj31 1 fraction_NA31 -en tj21 1 fraction_NA21
+
+
+[PARAMETERS]
+
+//	#isInt? #name	#dist.#min	#max
+
+// Population merge times (in years! Below scale to generations in units of 4Ne)
+1	TJ21	unif	2000	60000	output	
+1	TJ31	unif	2000	100000	output	
+
+//	Effective population sizes  (set minumum at around 300 inds)
+//	Subpopulations 2 and 3 will be defined as fractions relative to N_effective (i.e. N1) --> see complex parameters
+1	N1	unif	60000 180000   output
+0	fraction_N2	unif	0.5 1.5   output
+0	fraction_N3	unif	0.5 1.5   output
+0	fraction_NA21	unif	0.5 1.5	output
+0	fraction_NA31	unif	0.5 1.5	output
+
+// 	Migration rates 
+//	In msms, mi_j represents the fraction of subpopulation i that is made up of migrants from subpopulation j in forward time. Hence pastward we have the rate that a lineage moves from deme i to j as mi_j.
+0	log_m12	unif	-4	2 output
+0	log_m21	unif	-4	2 output
+0	log_m13	unif	-4	2 output
+0	log_m31	unif	-4	2 output
+0	log_m23	unif	-4	2 output
+0	log_m32	unif	-4	2 output
+
+//	Fixed parameters
+//	We define the mutation rate at a reasonable value (e.g. 1x10-8).
+0	mutation_rate	unif	0.00000001	0.00000001	output
+//	Here, we'll want to keep sequence length fixed (so that ABCtoolbox can conveniently vary theta for us) 
+1	sequence_length	unif	250	250	output
+//	Define the number of independent loci (iterations)
+1	no_loci unif	1000	1000	output
+// Define generation time (go with 4 as estimated time to first reproduction)
+1	t_gen	unif	4	4	output
+
+[RULES]
+TJ21 < TJ31
+
+// E.g. continent population sizes should be larger than island population sizes
+
+[COMPLEX PARAMETERS]
+
+//	Various
+// Set theta (maximum = 4*180000*1e-8*250=1.8, minumum=4*50000*1e-8*250=0.5)
+//  OLD  0	theta = (4 * 10000 * mutation_rate * sequence_length)	output
+0   theta = (4 * N1 * mutation_rate * sequence_length)  output
+
+// Determine scaled merge times
+0	tj21 = (TJ21/t_gen)/(4*N1)  output
+0	tj31 = (TJ31/t_gen)/(4*N1)  output
+
+// Back-transform migration rates
+0	m12 = pow10(log_m12) output
+0	m21 = pow10(log_m21) output
+0	m13 = pow10(log_m13) output
+0	m31 = pow10(log_m31) output
+0	m23 = pow10(log_m23) output
+0	m32 = pow10(log_m32) output
